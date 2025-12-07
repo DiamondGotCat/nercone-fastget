@@ -12,9 +12,9 @@ This is need Range-select feature, in Server-side.
 ## Requiments
 - CPython 3.9+
 - `uv` [PyPI↗︎](https://pypi.org/project/uv/) or `pip3` [PyPI↗︎](https://pypi.org/project/pip/) 
-- `nercone-modern` [PyPI↗︎](https://pypi.org/project/nercone-modern/)
-- `rich` [PyPI↗︎](https://pypi.org/project/rich/)
-- `requests` [PyPI↗︎](https://pypi.org/project/requests/)
+- `nercone-modern` [PyPI↗︎](https://pypi.org/project/nercone-modern/) for Modern CLI Visual
+- `httpx[http2]` [PyPI↗︎](https://pypi.org/project/httpx/) for HTTP Connection
+- `uvloop` [PyPI↗︎](https://pypi.org/project/uvloop/) for Fast Asynchronous Processing (non-Windows only)
 
 ## Installation
 
@@ -62,54 +62,58 @@ fastget [-h] [--help]
 ```
 
 ```
-nercone@demo ~> fastget -h
-usage: FastGet [-h] [-o OUTPUT] [-t THREADS] url
+nercone@demo ~/Downloads> fastget -h
+usage: fastget [-h] [-o OUTPUT] [-X {GET,POST}] [-d DATA] [-H HEADER] [-t THREADS] [-p] [-s] [-m] [--no-verify] [--no-info] [--no-http1] [--no-http2] url
 
-High-speed File Downloading Tool
+Modern High-Performance Downloader
 
 positional arguments:
-  url
+  url                   Target URL
 
 options:
   -h, --help            show this help message and exit
   -o OUTPUT, --output OUTPUT
+                        File destination
+  -X {GET,POST}, --method {GET,POST}
+                        HTTP method (GET/POST)
+  -d DATA, --data DATA  Data for POST method
+  -H HEADER, --header HEADER
+                        Custom Headers
   -t THREADS, --threads THREADS
+                        Number of threads to use for downloading
+  -p, --print           Output data directly to stdout without saving to a file
+  -s, --storage, --low-memory
+                        Utilize storage efficiently to reduce memory usage during internal processes such as downloading and merging.
+  -m, --memory, --low-storage
+                        Utilize memory efficiently to reduce maximum concurrent storage usage during internal processes such as downloading and merging.
+  --no-verify           In the case of HTTPS, if a secure connection cannot be established, the system will continue to operate normally.
+  --no-info             Suppresses all displays such as progress bars. If --print is used, only data is output to stdout.
+  --no-http1            Do not use HTTP/1 or HTTP/1.1
+  --no-http2            Do not use HTTP/2
 ```
 
-### Download with default number of threads
+### Download
 ```
-fastget <url>
-```
-
-```
-nercone@demo ~> fastget https://download.fedoraproject.org/pub/fedora/linux/releases/43/Workstation/x86_64/iso/Fedora-Workstation-Live-43-1.6.x86_64.iso
-Total file size: 2.74GB (2,742,190,080 B)
-(---------------------) DL All -  7% ( 1552/20922) | No Message
-(---------------------) DL #1 -  7% (  348/5231) | No Message
-(---------------------) DL #2 - 12% (  637/5231) | No Message
-(---------------------) DL #3 -  6% (  315/5231) | No Message
-(---------------------) DL #4 -  5% (  252/5231) | No Message
-```
-
-### Download with custom number of threads
-```
-fastget <url> [-t <number of threads>]
+fastget [-o OUTPUT] [-X {GET,POST}] [-d DATA] [-H HEADER] [-t THREADS] [-p] [-s] [-m] [--no-verify] [--no-info] [--no-http1] [--no-http2] <url>
 ```
 
 ```
-nercone@demo ~> fastget https://download.fedoraproject.org/pub/fedora/linux/releases/43/Workstation/x86_64/iso/Fedora-Workstation-Live-43-1.6.x86_64.iso -t 8
-Total file size: 2.74GB (2,742,190,080 B)
-(---------------------) DL All -  15% ( 3142/20922) | No Message
-(---------------------) DL #1 -  19% ( 496/2616) | No Message
-(---------------------) DL #2 -  12% ( 306/2616) | No Message
-(---------------------) DL #3 -  21% ( 562/2616) | No Message
-(---------------------) DL #4 -  14% ( 361/2616) | No Message
-(---------------------) DL #5 -  20% ( 533/2616) | No Message
-(---------------------) DL #6 -   9% ( 225/2616) | No Message
-(---------------------) DL #7 -  14% ( 368/2616) | No Message
-(---------------------) DL #8 -  11% ( 292/2616) | No Message
+nercone@demo ~> fastget https://download.fedoraproject.org/pub/fedora/linux/releases/43/Server/aarch64/iso/Fedora-Server-netinst-aarch64-43-1.6.iso
+[2025-12-05T17:24:31Z INFO     fastget] File size: 1,198,647,296 bytes
+[2025-12-05T17:24:31Z INFO     fastget] Connection Type: HTTPS (HTTP/1.1, TLS, Verified)
+[2025-12-05T17:24:31Z INFO     fastget] Threads: 8
+[-------------------------------------] Total DONE No Message
+[-------------------------------------] DL #1 DONE No Message
+[-------------------------------------] DL #2 DONE No Message
+[-------------------------------------] DL #3 DONE No Message
+[-------------------------------------] DL #4 DONE No Message
+[-------------------------------------] DL #5 DONE No Message
+[-------------------------------------] DL #6 DONE No Message
+[-------------------------------------] DL #7 DONE No Message
+[-------------------------------------] DL #8 DONE No Message
+[-------------------------------------] Marge DONE No Message
+[2025-12-05T17:24:46Z INFO     fastget] Completed in 16222.00ms
+[2025-12-05T17:24:46Z INFO     fastget] Saved to: Fedora-Server-netinst-aarch64-43-1.6.iso
 ```
-
----
 
 ![PyPI - Version](https://img.shields.io/pypi/v/nercone-fastget)

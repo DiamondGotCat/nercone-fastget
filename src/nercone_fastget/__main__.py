@@ -17,6 +17,11 @@ class CLIProgress(fastget.ProgressCallback):
         self.merge_accumulated = 0
         self.merge_bar = None
 
+        self.worker_progress = []
+        self.total_loaded = 0
+        self.last_worker_steps = []
+        self.last_total_steps = 0
+
     async def on_start(self, total_size: int, threads: int, http_version: str, final_url: str, verify_was_enabled: bool) -> None:
         self.logger.log(f"File size: {total_size:,} bytes")
         parsed_url = urlparse(final_url)
@@ -28,30 +33,44 @@ class CLIProgress(fastget.ProgressCallback):
         connection_type = f"{protocol} ({', '.join(details)})"
         self.logger.log(f"Connection Type: {connection_type}")
         self.logger.log(f"Threads: {threads}")
+
+        self.worker_progress = [0] * threads
+        self.total_loaded = 0
+        self.last_worker_steps = [0] * threads
+        self.last_total_steps = 0
+        
         if total_size > 0:
             total_steps = max(1, math.ceil(total_size / self.chunk_size_display))
             self.all_bar = ModernProgressBar(total=total_steps, process_name="Total", spinner_mode=False)
             self.all_bar.start()
             if threads > 1:
-                # チャンクサイズに基づいて各バーの合計ステップ数を計算
-                part_size_per_thread = total_size / threads
-                total_progress_units = math.ceil(part_size_per_thread / self.chunk_size_display)
-                
+                part_size = total_size // threads
                 for i in range(threads):
+                    start = part_size * i
+                    end = total_size - 1 if i == threads - 1 else start + part_size - 1
+                    size_for_this_thread = end - start + 1
+                    
+                    total_progress_units = max(1, math.ceil(size_for_this_thread / self.chunk_size_display))
                     bar = ModernProgressBar(total=total_progress_units, process_name=f"DL #{i+1}", spinner_mode=False)
                     bar.start()
                     self.thread_bars.append(bar)
 
     async def on_update(self, worker_id: int, loaded: int) -> None:
-        # on_updateはロードされたバイト数を受け取るので、プログレスバーの更新ロジックを修正
-        # (この実装は簡易的なもので、厳密なプログレス表示には各ワーカーの進捗管理が必要です)
         if self.thread_bars and worker_id < len(self.thread_bars):
-            # チャンクサイズごとに1ステップ進める
-            # 正確性を期すなら、各ワーカーの累積ロード量を保持する必要がある
-            self.thread_bars[worker_id].update()
+            self.worker_progress[worker_id] += loaded
+            current_worker_steps = self.worker_progress[worker_id] // self.chunk_size_display
+            steps_to_advance = current_worker_steps - self.last_worker_steps[worker_id]
+            if steps_to_advance > 0:
+                self.thread_bars[worker_id].update(steps_to_advance)
+                self.last_worker_steps[worker_id] = current_worker_steps
 
         if self.all_bar:
-            self.all_bar.update()
+            self.total_loaded += loaded
+            current_total_steps = self.total_loaded // self.chunk_size_display
+            steps_to_advance = current_total_steps - self.last_total_steps
+            if steps_to_advance > 0:
+                self.all_bar.update(steps_to_advance)
+                self.last_total_steps = current_total_steps
 
     async def on_complete(self) -> None:
         if self.all_bar:
@@ -70,9 +89,10 @@ class CLIProgress(fastget.ProgressCallback):
     async def on_merge_update(self, loaded: int) -> None:
         if self.merge_bar:
             self.merge_accumulated += loaded
-            while self.merge_accumulated >= self.chunk_size_display:
-                self.merge_bar.update()
-                self.merge_accumulated -= self.chunk_size_display
+            steps_to_advance = self.merge_accumulated // self.chunk_size_display
+            if steps_to_advance > 0:
+                self.merge_bar.update(steps_to_advance)
+                self.merge_accumulated %= self.chunk_size_display
 
     async def on_merge_complete(self) -> None:
         if self.merge_bar:
