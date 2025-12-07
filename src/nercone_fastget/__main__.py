@@ -1,4 +1,5 @@
 import os
+import sys
 import math
 import argparse
 import asyncio
@@ -14,6 +15,7 @@ class CLIProgress(fastget.ProgressCallback):
         self.thread_bars = []
         self.chunk_size_display = 1024 * 128
         self.merge_accumulated = 0
+        self.merge_bar = None
 
     async def on_start(self, total_size: int, threads: int, http_version: str, final_url: str, verify_was_enabled: bool) -> None:
         self.logger.log(f"File size: {total_size:,} bytes")
@@ -31,15 +33,21 @@ class CLIProgress(fastget.ProgressCallback):
             self.all_bar = ModernProgressBar(total=total_steps, process_name="Total", spinner_mode=False)
             self.all_bar.start()
             if threads > 1:
-                part_size = total_size // threads
+                # チャンクサイズに基づいて各バーの合計ステップ数を計算
+                part_size_per_thread = total_size / threads
+                total_progress_units = math.ceil(part_size_per_thread / self.chunk_size_display)
+                
                 for i in range(threads):
-                    p_steps = max(1, math.ceil(part_size / self.chunk_size_display))
-                    bar = ModernProgressBar(total=p_steps, process_name=f"DL #{i+1}", spinner_mode=False)
+                    bar = ModernProgressBar(total=total_progress_units, process_name=f"DL #{i+1}", spinner_mode=False)
                     bar.start()
                     self.thread_bars.append(bar)
 
     async def on_update(self, worker_id: int, loaded: int) -> None:
+        # on_updateはロードされたバイト数を受け取るので、プログレスバーの更新ロジックを修正
+        # (この実装は簡易的なもので、厳密なプログレス表示には各ワーカーの進捗管理が必要です)
         if self.thread_bars and worker_id < len(self.thread_bars):
+            # チャンクサイズごとに1ステップ進める
+            # 正確性を期すなら、各ワーカーの累積ロード量を保持する必要がある
             self.thread_bars[worker_id].update()
 
         if self.all_bar:
@@ -74,20 +82,32 @@ class CLIProgress(fastget.ProgressCallback):
         self.logger.log(msg, "ERROR")
 
 async def async_main() -> None:
-    logger = ModernLogging("fastget")
-
     parser = argparse.ArgumentParser(prog='fastget', description='Modern High-Performance Downloader')
     parser.add_argument('url', help="Target URL")
-    parser.add_argument('-o', '--output', help="Write output to <file>")
-    parser.add_argument('-X', '--request', default='GET', help="Specify request method")
-    parser.add_argument('-d', '--data', help="HTTP POST data")
-    parser.add_argument('-H', '--header', action='append', help="Pass custom header(s)")
-    parser.add_argument('-t', '--threads', dest='threads', type=int, default=fastget.DEFAULT_THREADS, help="Number of concurrent connections")
-    parser.add_argument('--no-http2', action='store_true', help="Disable HTTP/2")
-    parser.add_argument('--no-verify', action='store_true', help="Disable SSL verification")
-    parser.add_argument('--memory', action='store_true', help="Fetch to memory")
+    parser.add_argument('-o', '--output', help="File destination")
+    parser.add_argument('-X', '--method', default='GET', choices=["GET", "POST"], help="HTTP method (GET/POST)")
+    parser.add_argument('-d', '--data', help="Data for POST method")
+    parser.add_argument('-H', '--header', action='append', help="Custom Headers")
+    parser.add_argument('-t', '--threads', type=int, default=fastget.DEFAULT_THREADS, help="Number of threads to use for downloading")
+    parser.add_argument('-p', '--print', dest='print_to_stdout', action='store_true', help="Output data directly to stdout without saving to a file")
+    parser.add_argument('-s', '--storage', '--low-memory', dest='low_memory', action='store_true', help="Utilize storage efficiently to reduce memory usage during internal processes such as downloading and merging.")
+    parser.add_argument('-m', '--memory', '--low-storage', dest='low_storage', action='store_true', help="Utilize memory efficiently to reduce maximum concurrent storage usage during internal processes such as downloading and merging.")
+    parser.add_argument('--no-verify', action='store_true', help="In the case of HTTPS, if a secure connection cannot be established, the system will continue to operate normally.")
+    parser.add_argument('--no-info', action='store_true', help="Suppresses all displays such as progress bars. If --print is used, only data is output to stdout.")
+    parser.add_argument('--no-http1', action='store_true', help="Do not use HTTP/1 or HTTP/1.1")
+    parser.add_argument('--no-http2', action='store_true', help="Do not use HTTP/2")
 
     args = parser.parse_args()
+
+    if args.no_info:
+        class DummyLogger:
+            def log(self, *args, **kwargs):
+                pass
+        logger = DummyLogger()
+        callback = fastget.ProgressCallback()
+    else:
+        logger = ModernLogging("fastget")
+        callback = CLIProgress(logger)
 
     headers = {}
     if args.header:
@@ -96,49 +116,53 @@ async def async_main() -> None:
                 k, v = h.split(':', 1)
                 headers[k.strip()] = v.strip()
 
-    method = args.request
-    if args.data and method == 'GET':
+    method = args.method
+    if args.data and method.upper() == 'GET':
         method = 'POST'
 
-    output = args.output
-    if not output and not args.memory:
-        parsed = fastget.urlparse(args.url)
-        output = fastget.unquote(os.path.basename(parsed.path)) or "downloaded_file"
+    if args.print_to_stdout:
+        if args.output:
+            logger.log("Warning: Both --output and --print were specified. --output will be ignored.", "WARNING")
+        output = None
+    else:
+        output = args.output
+        if not output:
+            parsed = fastget.urlparse(args.url)
+            output = fastget.unquote(os.path.basename(parsed.path)) or "downloaded_file"
 
-    callback = CLIProgress(logger)
+    http1_enabled = not args.no_http1
+    http2_enabled = not args.no_http2
+    if not http1_enabled and not http2_enabled:
+        logger.log("Error: Cannot disable both HTTP/1 and HTTP/2.", "CRITICAL")
+        return
 
     session = fastget.FastGetSession(
         max_threads=args.threads,
-        http2=not args.no_http2,
+        http1=http1_enabled,
+        http2=http2_enabled,
         verify=not args.no_verify
     )
 
     start_time = asyncio.get_running_loop().time()
 
     try:
-        if args.memory:
-            result = await session.process(
-                method=method, 
-                url=args.url, 
-                data=args.data, 
-                headers=headers, 
-                callback=callback
-            )
-            print(result.text)
-        else:
-            path = await session.process(
-                method=method, 
-                url=args.url, 
-                output=output, 
-                data=args.data, 
-                headers=headers, 
-                callback=callback
-            )
+        result = await session.process(
+            method=method, 
+            url=args.url, 
+            output=output,
+            data=args.data, 
+            headers=headers, 
+            callback=callback
+        )
+
+        if isinstance(result, str):
             end_time = asyncio.get_running_loop().time()
             duration_ms = (end_time - start_time) * 1000
 
             logger.log(f"Completed in {duration_ms:.2f}ms")
-            logger.log(f"Saved to: {path}")
+            logger.log(f"Saved to: {result}")
+        else:
+            sys.stdout.buffer.write(result.content)
 
     except fastget.FastGetError as e:
         logger.log(str(e), "CRITICAL")

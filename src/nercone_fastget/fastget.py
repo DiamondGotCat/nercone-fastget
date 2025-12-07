@@ -59,9 +59,10 @@ class FastGetResponse:
         return self._r.json(**kwargs)
 
 class FastGetSession:
-    def __init__(self, max_threads: int = DEFAULT_THREADS, http2: bool = True, verify: bool = True, follow_redirects: bool = True):
+    def __init__(self, max_threads: int = DEFAULT_THREADS, http1: bool = True, http2: bool = True, verify: bool = True, follow_redirects: bool = True):
         self.max_threads = max_threads
         self.client_args = {
+            "http1": http1,
             "http2": http2,
             "verify": verify,
             "follow_redirects": follow_redirects,
@@ -238,6 +239,7 @@ def run_sync(coro: Awaitable[T]) -> T:
 def download(url: str, output: str, **kwargs) -> str:
     session = FastGetSession(
         max_threads=kwargs.pop("threads", DEFAULT_THREADS),
+        http1=not kwargs.pop("no_http1", False),
         http2=not kwargs.pop("no_http2", False)
     )
     return run_sync(session.process("GET", url, output=output, **kwargs))
@@ -245,6 +247,7 @@ def download(url: str, output: str, **kwargs) -> str:
 def request(method: str, url: str, **kwargs) -> FastGetResponse:
     session = FastGetSession(
         max_threads=kwargs.pop("threads", DEFAULT_THREADS),
+        http1=not kwargs.pop("no_http1", False),
         http2=not kwargs.pop("no_http2", False)
     )
     return run_sync(session.process(method, url, output=None, **kwargs))
