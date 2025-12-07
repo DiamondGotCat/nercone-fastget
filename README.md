@@ -94,7 +94,7 @@ options:
 
 ### Download
 ```
-fastget [-o OUTPUT] [-X {GET,POST}] [-d DATA] [-H HEADER] [-t THREADS] [-p] [-s] [-m] [--no-verify] [--no-info] [--no-http1] [--no-http2] <url>
+fastget [-o OUTPUT] [-X {GET,POST}] [-d DATA] [-H HEADER] [-t THREADS] [-p] [-s] [-m] [--no-verify] [--no-info] [--no-http1] [--no-http2] url
 ```
 
 ```
