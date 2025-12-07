@@ -18,12 +18,12 @@ This is need Range-select feature, in Server-side.
 
 ## Installation
 
-### using uv (recommended)
+### uv (recommended)
 ```
 uv tool install nercone-fastget
 ```
 
-### using pip3
+### pip3
 
 **System Python:**
 ```
@@ -37,12 +37,12 @@ pip3 install nercone-fastget
 
 ## Update
 
-### using uv (recommended)
+### uv
 ```
 uv tool install nercone-fastget --upgrade
 ```
 
-### using pip3
+### pip3
 
 **System Python:**
 ```
