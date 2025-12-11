@@ -109,7 +109,7 @@ class FastGetSession:
                         async for chunk in response.aiter_bytes(chunk_size=DEFAULT_CHUNK_SIZE):
                             if not chunk:
                                 break
-                            
+
                             f.write(chunk)
                             await callback.on_update(worker_id, len(chunk))
                 return
@@ -167,7 +167,7 @@ class FastGetSession:
                     for i in range(threads):
                         start = part_size * i
                         end = file_size - 1 if i == threads - 1 else start + part_size - 1
-                        
+
                         part_path = f"{output}.part{i}"
                         part_files.append(part_path)
 

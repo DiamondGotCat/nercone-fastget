@@ -38,7 +38,7 @@ class CLIProgress(fastget.ProgressCallback):
         self.total_loaded = 0
         self.last_worker_steps = [0] * threads
         self.last_total_steps = 0
-        
+
         if total_size > 0:
             total_steps = max(1, math.ceil(total_size / self.chunk_size_display))
             self.all_bar = ModernProgressBar(total=total_steps, process_name="Total", spinner_mode=False)
@@ -49,7 +49,7 @@ class CLIProgress(fastget.ProgressCallback):
                     start = part_size * i
                     end = total_size - 1 if i == threads - 1 else start + part_size - 1
                     size_for_this_thread = end - start + 1
-                    
+
                     total_progress_units = max(1, math.ceil(size_for_this_thread / self.chunk_size_display))
                     bar = ModernProgressBar(total=total_progress_units, process_name=f"DL #{i+1}", spinner_mode=False)
                     bar.start()
@@ -167,11 +167,11 @@ async def async_main() -> None:
 
     try:
         result = await session.process(
-            method=method, 
-            url=args.url, 
+            method=method,
+            url=args.url,
             output=output,
-            data=args.data, 
-            headers=headers, 
+            data=args.data,
+            headers=headers,
             callback=callback
         )
 
@@ -195,7 +195,7 @@ def main() -> None:
         uvloop.install()
     except ImportError:
         pass
-    
+
     asyncio.run(async_main())
 
 if __name__ == "__main__":
