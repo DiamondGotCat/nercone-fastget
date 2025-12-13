@@ -195,7 +195,7 @@ class FastGetSession:
                     await callback.on_merge_complete()
 
                 else:
-                    headers["User-Agent"] = f'FastGet/{VERSION} (Downloading with 1 Thread(s), Connection No. 0, https://github.com/DiamondGotCat/nercone-fastget)'
+                    headers["User-Agent"] = f'FastGet/{VERSION} (Downloading with Single thread, https://github.com/DiamondGotCat/nercone-fastget)'
                     async with client.stream(method, url, **req_kwargs) as response:
                         response.raise_for_status()
                         with open(output, "wb") as f:
@@ -209,7 +209,7 @@ class FastGetSession:
             else:
                 content_buffer = bytearray()
                 response_obj = None
-                headers["User-Agent"] = f'FastGet/{VERSION} (Downloading with 1 Thread(s), Connection No. 0, https://github.com/DiamondGotCat/nercone-fastget)'
+                headers["User-Agent"] = f'FastGet/{VERSION} (Downloading with Single thread, https://github.com/DiamondGotCat/nercone-fastget)'
 
                 async with client.stream(method, url, **req_kwargs) as response:
                     response.raise_for_status()
