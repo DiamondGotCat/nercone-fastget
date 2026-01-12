@@ -2,8 +2,8 @@ import os
 import asyncio
 import httpx
 from importlib.metadata import version
-from typing import Union, Optional, Dict, Any, TypeVar, Coroutine, Awaitable
 from urllib.parse import urlparse, unquote
+from typing import Union, Optional, Dict, Any, TypeVar, Coroutine, Awaitable
 
 try:
     VERSION = version("nercone-fastget")
@@ -64,7 +64,7 @@ class FastGetResponse:
 class FastGetSession:
     def __init__(self, max_threads: int = DEFAULT_THREADS, http1: bool = True, http2: bool = True, verify: bool = True, follow_redirects: bool = True):
         self.max_threads = max_threads
-        self.client_args = {
+        self.client_args: Dict[str, Any] = {
             "http1": http1,
             "http2": http2,
             "verify": verify,
@@ -72,20 +72,20 @@ class FastGetSession:
             "timeout": DEFAULT_TIMEOUT
         }
 
-    async def _get_info(self, client: httpx.AsyncClient, method: str, url: str, **kwargs) -> tuple[int, bool, bool, Optional[httpx.Response]]:
-        headers = kwargs.get("headers", {}).copy()
+    async def _get_info(self, client: httpx.AsyncClient, method: str, url: str, headers: dict[str,str]) -> tuple[int, bool, bool, Optional[httpx.Response]]:
         headers["User-Agent"] = f'FastGet/{VERSION} (Getting Informations; https://github.com/DiamondGotCat/nercone-fastget/)'
 
         if method.upper() != "GET":
             return 0, False, False, None
 
         try:
-            head_resp = await client.head(url, headers=headers)
+            head_resp = await client.head(url=url, headers=headers)
 
             if head_resp.status_code < 400:
                 resp = head_resp
             else:
-                resp = await client.request(method, url, headers=headers, stream=True)
+                request = client.build_request(method=method, url=url, headers=headers)
+                resp = await client.send(request, stream=True)
                 await resp.aclose()
 
             size = int(resp.headers.get("content-length", 0))
@@ -97,15 +97,13 @@ class FastGetSession:
         except Exception:
             return 0, False, True, None
 
-    async def _download_worker(self, client: httpx.AsyncClient, method: str, url: str, start: int, end: int, worker_id: int, total_threads: int, part_path: str, callback: ProgressCallback, **kwargs) -> None:
-        headers = kwargs.get("headers", {}).copy()
+    async def _download_worker(self, client: httpx.AsyncClient, method: str, url: str, start: int, end: int, worker_id: int, total_threads: int, part_path: str, callback: ProgressCallback, headers: dict[str,str]) -> None:
         headers["Range"] = f"bytes={start}-{end}"
         headers["User-Agent"] = f'FastGet/{VERSION} (Downloading with {total_threads} Thread(s), Connection No. {worker_id}; +https://github.com/DiamondGotCat/nercone-fastget/)'
-        kwargs["headers"] = headers
 
         for attempt in range(DEFAULT_RETRIES):
             try:
-                async with client.stream(method, url, **kwargs) as response:
+                async with client.stream(method=method, url=url, headers=headers) as response:
                     response.raise_for_status()
 
                     with open(part_path, "wb") as f:
@@ -123,15 +121,13 @@ class FastGetSession:
                     raise
                 await asyncio.sleep(1)
 
-    async def process(self, method: str, url: str, output: Optional[str] = None, data: Any = None, json: Any = None, params: Any = None, headers: Dict = None, callback: Optional[ProgressCallback] = None) -> Union[str, FastGetResponse]:
+    async def process(self, method: str, url: str, output: Optional[str] = None, data: Any = None, json: Any = None, params: Any = None, headers: Optional[Dict[str, str]] = None, callback: Optional[ProgressCallback] = None) -> Union[str, FastGetResponse]:
         callback = callback or ProgressCallback()
         if headers is None:
             headers = {}
 
-        req_kwargs = {"data": data, "json": json, "params": params, "headers": headers}
-
         async with httpx.AsyncClient(**self.client_args) as client:
-            file_size, is_resumable, is_rejected, info_response = await self._get_info(client, method, url, **req_kwargs)
+            file_size, is_resumable, is_rejected, info_response = await self._get_info(client, method, url, headers)
 
             if method.upper() == "GET" and not info_response:
                 raise FastGetError(f"Failed to retrieve file information from {url}")
@@ -159,7 +155,7 @@ class FastGetSession:
                 threads=threads,
                 http_version=http_version,
                 final_url=final_url,
-                verify_was_enabled=self.client_args["verify"]
+                verify_was_enabled=bool(self.client_args["verify"])
             )
 
             if output:
@@ -179,11 +175,7 @@ class FastGetSession:
                         part_path = f"{output}.part{i}"
                         part_files.append(part_path)
 
-                        tasks.append(
-                            self._download_worker(
-                                client, method, url, start, end, i, threads, part_path, callback, **req_kwargs
-                            )
-                        )
+                        tasks.append(self._download_worker(client, method, url, start, end, i, threads, part_path, callback, headers))
 
                     await asyncio.gather(*tasks)
 
@@ -204,7 +196,7 @@ class FastGetSession:
 
                 else:
                     headers["User-Agent"] = f'FastGet/{VERSION} (Downloading with Single thread; +https://github.com/DiamondGotCat/nercone-fastget/)'
-                    async with client.stream(method, url, **req_kwargs) as response:
+                    async with client.stream(method=method, url=url, data=data, json=json, params=params, headers=headers) as response:
                         response.raise_for_status()
                         with open(output, "wb") as f:
                             async for chunk in response.aiter_bytes(chunk_size=DEFAULT_CHUNK_SIZE):
@@ -218,7 +210,7 @@ class FastGetSession:
                 content_buffer = bytearray()
                 headers["User-Agent"] = f'FastGet/{VERSION} (Downloading with Single thread; +https://github.com/DiamondGotCat/nercone-fastget/)'
 
-                async with client.stream(method, url, **req_kwargs) as response:
+                async with client.stream(method=method, url=url, data=data, json=json, params=params, headers=headers) as response:
                     response.raise_for_status()
                     async for chunk in response.aiter_bytes(chunk_size=DEFAULT_CHUNK_SIZE):
                         content_buffer.extend(chunk)
@@ -237,7 +229,7 @@ def run_sync(coro: Awaitable[T]) -> T:
         asyncio.set_event_loop(loop)
     return loop.run_until_complete(coro)
 
-def download(url: str, output: str, **kwargs) -> str:
+def download(url: str, output: str, **kwargs) -> str | FastGetResponse:
     session = FastGetSession(
         max_threads=kwargs.pop("threads", DEFAULT_THREADS),
         http1=not kwargs.pop("no_http1", False),
@@ -245,7 +237,7 @@ def download(url: str, output: str, **kwargs) -> str:
     )
     return run_sync(session.process("GET", url, output=output, **kwargs))
 
-def request(method: str, url: str, **kwargs) -> FastGetResponse:
+def request(method: str, url: str, **kwargs) -> str | FastGetResponse:
     session = FastGetSession(
         max_threads=kwargs.pop("threads", DEFAULT_THREADS),
         http1=not kwargs.pop("no_http1", False),
@@ -253,8 +245,8 @@ def request(method: str, url: str, **kwargs) -> FastGetResponse:
     )
     return run_sync(session.process(method, url, output=None, **kwargs))
 
-def get(url: str, **kwargs) -> FastGetResponse:
+def get(url: str, **kwargs) -> str | FastGetResponse:
     return request("GET", url, **kwargs)
 
-def post(url: str, **kwargs) -> FastGetResponse:
+def post(url: str, **kwargs) -> str | FastGetResponse:
     return request("POST", url, **kwargs)
