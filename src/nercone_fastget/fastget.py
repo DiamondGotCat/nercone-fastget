@@ -74,7 +74,7 @@ class FastGetSession:
 
     async def _get_info(self, client: httpx.AsyncClient, method: str, url: str, **kwargs) -> tuple[int, bool, bool, Optional[httpx.Response]]:
         headers = kwargs.get("headers", {}).copy()
-        headers["User-Agent"] = f'FastGet/{VERSION} (Getting Informations, https://github.com/DiamondGotCat/nercone-fastget)'
+        headers["User-Agent"] = f'FastGet/{VERSION} (Getting Informations; https://github.com/DiamondGotCat/nercone-fastget/)'
 
         if method.upper() != "GET":
             return 0, False, False, None
@@ -100,7 +100,7 @@ class FastGetSession:
     async def _download_worker(self, client: httpx.AsyncClient, method: str, url: str, start: int, end: int, worker_id: int, total_threads: int, part_path: str, callback: ProgressCallback, **kwargs) -> None:
         headers = kwargs.get("headers", {}).copy()
         headers["Range"] = f"bytes={start}-{end}"
-        headers["User-Agent"] = f'FastGet/{VERSION} (Downloading with {total_threads} Thread(s), Connection No. {worker_id}, https://github.com/DiamondGotCat/nercone-fastget)'
+        headers["User-Agent"] = f'FastGet/{VERSION} (Downloading with {total_threads} Thread(s), Connection No. {worker_id}; +https://github.com/DiamondGotCat/nercone-fastget/)'
         kwargs["headers"] = headers
 
         for attempt in range(DEFAULT_RETRIES):
@@ -139,16 +139,16 @@ class FastGetSession:
             use_parallel = True
             if method.upper() != "GET":
                 use_parallel = False
-                callback.on_slowdown("Parallel download are currently only supported with the GET method. Using single-threaded download.")
+                await callback.on_slowdown("Parallel download are currently only supported with the GET method. Using single-threaded download.")
             elif not is_resumable:
                 use_parallel = False
-                callback.on_slowdown("Server does not support download range specification. Using single-threaded download.")
+                await callback.on_slowdown("Server does not support download range specification. Using single-threaded download.")
             elif is_rejected:
                 use_parallel = False
-                callback.on_slowdown("The server rejected Parallel FastGet download. Using single-threaded download.")
+                await callback.on_slowdown("The server rejected Parallel FastGet download. Using single-threaded download.")
             elif not file_size > 0:
                 use_parallel = False
-                callback.on_slowdown("The file size reported by the server is invalid. Using single-threaded download.")
+                await callback.on_slowdown("The file size reported by the server is invalid. Using single-threaded download.")
             threads = self.max_threads if use_parallel else 1
 
             http_version = info_response.http_version if info_response else "HTTP/1.1"
@@ -203,7 +203,7 @@ class FastGetSession:
                     await callback.on_merge_complete()
 
                 else:
-                    headers["User-Agent"] = f'FastGet/{VERSION} (Downloading with Single thread, https://github.com/DiamondGotCat/nercone-fastget)'
+                    headers["User-Agent"] = f'FastGet/{VERSION} (Downloading with Single thread; +https://github.com/DiamondGotCat/nercone-fastget/)'
                     async with client.stream(method, url, **req_kwargs) as response:
                         response.raise_for_status()
                         with open(output, "wb") as f:
@@ -216,25 +216,18 @@ class FastGetSession:
 
             else:
                 content_buffer = bytearray()
-                response_obj = None
-                headers["User-Agent"] = f'FastGet/{VERSION} (Downloading with Single thread, https://github.com/DiamondGotCat/nercone-fastget)'
+                headers["User-Agent"] = f'FastGet/{VERSION} (Downloading with Single thread; +https://github.com/DiamondGotCat/nercone-fastget/)'
 
                 async with client.stream(method, url, **req_kwargs) as response:
                     response.raise_for_status()
-                    response_obj = response
                     async for chunk in response.aiter_bytes(chunk_size=DEFAULT_CHUNK_SIZE):
                         content_buffer.extend(chunk)
                         await callback.on_update(0, len(chunk))
 
                 await callback.on_complete()
-
-                final_response = httpx.Response(
-                    status_code=response_obj.status_code,
-                    headers=response_obj.headers,
-                    request=response_obj.request,
-                    content=bytes(content_buffer)
-                )
-                return FastGetResponse(final_response, bytes(content_buffer))
+                content = bytes(content_buffer)
+                response._content = content  # type: ignore[attr-defined]
+                return FastGetResponse(response, content)
 
 def run_sync(coro: Awaitable[T]) -> T:
     try:
