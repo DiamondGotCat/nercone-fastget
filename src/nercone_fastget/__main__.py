@@ -98,6 +98,9 @@ class CLIProgress(fastget.ProgressCallback):
         if self.merge_bar:
             self.merge_bar.finish()
 
+    async def on_slowdown(self, msg: str) -> None:
+        self.logger.log(msg, "WARN")
+
     async def on_error(self, msg: str) -> None:
         self.logger.log(msg, "ERROR")
 

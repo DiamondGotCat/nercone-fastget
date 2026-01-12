@@ -39,6 +39,9 @@ class ProgressCallback:
     async def on_merge_complete(self) -> None:
         pass
 
+    async def on_slowdown(self, msg: str) -> None:
+        pass
+
     async def on_error(self, msg: str) -> None:
         pass
 
@@ -133,14 +136,19 @@ class FastGetSession:
             if method.upper() == "GET" and not info_response:
                 raise FastGetError(f"Failed to retrieve file information from {url}")
 
-            use_parallel = (
-                method.upper() == "GET" and 
-                is_resumable and 
-                not is_rejected and 
-                file_size > 0 and 
-                output is not None
-            )
-
+            use_parallel = True
+            if method.upper() != "GET":
+                use_parallel = False
+                callback.on_slowdown("Parallel download are currently only supported with the GET method. Using single-threaded download.")
+            elif not is_resumable:
+                use_parallel = False
+                callback.on_slowdown("Server does not support download range specification. Using single-threaded download.")
+            elif is_rejected:
+                use_parallel = False
+                callback.on_slowdown("The server rejected Parallel FastGet download. Using single-threaded download.")
+            elif not file_size > 0:
+                use_parallel = False
+                callback.on_slowdown("The file size reported by the server is invalid. Using single-threaded download.")
             threads = self.max_threads if use_parallel else 1
 
             http_version = info_response.http_version if info_response else "HTTP/1.1"
