@@ -7,6 +7,7 @@
 
 import os
 import sys
+import shutil
 import asyncio
 import argparse
 from urllib.parse import urlparse, unquote
@@ -41,8 +42,9 @@ class RichProgressCallback(ProgressCallback):
         self.merge_task: Optional[int] = None
 
     async def on_start(self, total_size: int, threads: int, http_version: str, final_url: str, verify_was_enabled: bool) -> None:
-        self.console.print(f"[bold blue]Nercone FastGet v{VERSION}")
-        self.console.print(f"[blue]URL           :[/blue] {final_url[:50] + '...' if len(final_url) > 50 else final_url}")
+        terminal_size = shutil.get_terminal_size()
+        self.console.print(f"[bold][blue]Nercone FastGet[/blue] v{VERSION}[/bold]")
+        self.console.print(f"[blue]URL           :[/blue] {final_url[:terminal_size.columns-19] + '...' if len(final_url) > terminal_size.columns-16 else final_url}")
         self.console.print(f"[blue]Filesize      :[/blue] {decimal(total_size)}")
         self.console.print(f"[blue]Threads       :[/blue] {threads}")
         self.console.print(f"[blue]HTTP Version  :[/blue] {http_version}")
@@ -61,7 +63,7 @@ class RichProgressCallback(ProgressCallback):
             self.progress.update(self.worker_tasks[worker_id], advance=loaded)
 
     async def on_merge_start(self, total_size: int) -> None:
-        self.merge_task = self.progress.add_task("[bold cyan]Merge", total=total_size)
+        self.merge_task = self.progress.add_task("[bold blue]Merge", total=total_size)
 
     async def on_merge_update(self, loaded: int) -> None:
         if self.merge_task is not None:
@@ -164,7 +166,7 @@ async def main():
             result = await downloader
 
         if not args.no_info:
-            console.print(f"[bold green]✔ Downloaded[/bold green] Saved to '{result}'")
+            console.print(f"[bold green]✔ Downloaded[/bold green] to '{result}'")
 
     except (FastGetError, Exception) as e:
         if not isinstance(callback, RichProgressCallback) or (isinstance(callback, RichProgressCallback) and callback.progress.finished):
