@@ -5,10 +5,10 @@
 # │ Copyright (c) 2025 DiamondGotCat     │
 # ╰──────────────────────────────────────╯
 
-import argparse
-import asyncio
 import os
 import sys
+import asyncio
+import argparse
 from urllib.parse import urlparse, unquote
 from typing import Dict, List, Optional
 

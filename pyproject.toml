@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "nercone-fastget"
-version = "6.0.0"
+version = "6.0.1"
 description = "High-speed File Downloading Tool"
 readme = { file = "README.md", content-type = "text/markdown" }
 authors = [
@@ -24,4 +24,4 @@ classifiers = [
 ]
 
 [project.scripts]
-fastget = "nercone_fastget.__main__:main"
+fastget = "nercone_fastget.__main__:run"
