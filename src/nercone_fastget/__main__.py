@@ -42,7 +42,7 @@ class RichProgressCallback(ProgressCallback):
 
     async def on_start(self, total_size: int, threads: int, http_version: str, final_url: str, verify_was_enabled: bool) -> None:
         self.console.print(f"[bold blue]Nercone FastGet v{VERSION}")
-        self.console.print(f"[blue]URL           :[/blue] {final_url[30:] + '...' if len(final_url) > 30 else final_url}")
+        self.console.print(f"[blue]URL           :[/blue] {final_url[:50] + '...' if len(final_url) > 50 else final_url}")
         self.console.print(f"[blue]Filesize      :[/blue] {decimal(total_size)}")
         self.console.print(f"[blue]Threads       :[/blue] {threads}")
         self.console.print(f"[blue]HTTP Version  :[/blue] {http_version}")
