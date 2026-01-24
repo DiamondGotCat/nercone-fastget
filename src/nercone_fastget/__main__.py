@@ -41,16 +41,12 @@ class RichProgressCallback(ProgressCallback):
         self.merge_task: Optional[int] = None
 
     async def on_start(self, total_size: int, threads: int, http_version: str, final_url: str, verify_was_enabled: bool) -> None:
-        self.console.print(Panel(
-            f"[bold]URL[/bold]: {final_url}\n"
-            f"[bold]File Size[/bold]: {decimal(total_size)}\n"
-            f"[bold]Threads[/bold]: {threads}\n"
-            f"[bold]HTTP Version[/bold]: {http_version}\n"
-            f"[bold]SSL/TLS Verify[/bold]: {'Enabled' if verify_was_enabled else '[yellow]Disabled[/yellow]'}",
-            title="Download Information",
-            border_style="green",
-            expand=False
-        ))
+        self.console.print(f"[bold blue]Nercone FastGet v{VERSION}")
+        self.console.print(f"[blue]URL           :[/blue] {final_url}")
+        self.console.print(f"[blue]Filesize      :[/blue] {decimal(total_size)}")
+        self.console.print(f"[blue]Threads       :[/blue] {threads}")
+        self.console.print(f"[blue]HTTP Version  :[/blue] {http_version}")
+        self.console.print(f"[blue]SSL/TLS Verify:[/blue] {'Enabled' if verify_was_enabled else '[yellow]Disabled[/yellow]'}")
         self.overall_task = self.progress.add_task("[bold green]Download", total=total_size)
         if threads > 1:
             part_size = total_size // threads
@@ -91,8 +87,8 @@ async def main():
     parser.add_argument("url", help="URL to download from.")
     parser.add_argument("-o", "--output", help="Path to save the file. If not specified, it's inferred from the URL.")
     parser.add_argument("-t", "--threads", type=int, default=DEFAULT_THREADS, help=f"Number of parallel connections. (default: {DEFAULT_THREADS})")
-    parser.add_argument( "-X", "--request", default="GET", choices=["GET", "POST"], help="HTTP method to use. (default: GET)")
-    parser.add_argument( "-H", "--header", action="append", help="Custom header to send with the request (e.g., 'User-Agent: my-app/1.0').\nCan be specified multiple times.")
+    parser.add_argument("-X", "--request", default="GET", choices=["GET", "POST"], help="HTTP method to use. (default: GET)")
+    parser.add_argument("-H", "--header", action="append", help="Custom header to send with the request (e.g., 'User-Agent: my-app/1.0').\nCan be specified multiple times.")
     parser.add_argument("-d", "--data", help="Data to send in a POST request.")
     parser.add_argument("--no-verify", action="store_false", dest="verify", help="Disable SSL/TLS certificate verification.")
     parser.add_argument("--no-info", action="store_true", help="Silent mode. Suppress progress bar and other info.\nErrors are still printed to stderr.")
