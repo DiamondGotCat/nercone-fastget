@@ -1,205 +1,199 @@
-import os
-import sys
-import math
+# ╭──────────────────────────────────────╮
+# │ __main__.py on nercone-fastget       │
+# │ Nercone <nercone@diamondgotcat.net>  │
+# │ Made by Nercone / MIT License        │
+# │ Copyright (c) 2025 DiamondGotCat     │
+# ╰──────────────────────────────────────╯
+
 import argparse
 import asyncio
-from . import fastget
-from urllib.parse import urlparse
-from nercone_modern.logging import ModernLogging
-from nercone_modern.progressbar import ModernProgressBar
+import os
+import sys
+from urllib.parse import urlparse, unquote
+from typing import Dict, List, Optional
 
-class CLIProgress(fastget.ProgressCallback):
-    def __init__(self, logger: ModernLogging):
-        self.logger = logger
-        self.all_bar = None
-        self.thread_bars = []
-        self.chunk_size_display = 1024 * 128
-        self.merge_accumulated = 0
-        self.merge_bar = None
+from rich.console import Console
+from rich.panel import Panel
+from rich.filesize import decimal
+from rich.progress import (
+    Progress,
+    BarColumn,
+    TextColumn,
+    DownloadColumn,
+    TransferSpeedColumn,
+    TimeRemainingColumn,
+)
 
-        self.worker_progress = []
-        self.total_loaded = 0
-        self.last_worker_steps = []
-        self.last_total_steps = 0
+from .fastget import (
+    FastGetSession,
+    ProgressCallback,
+    FastGetError,
+    DEFAULT_THREADS,
+    VERSION,
+)
+
+class RichProgressCallback(ProgressCallback):
+    def __init__(self, console: "Console", progress: "Progress"):
+        self.console = console
+        self.progress = progress
+        self.overall_task: Optional[int] = None
+        self.worker_tasks: List[int] = []
+        self.merge_task: Optional[int] = None
 
     async def on_start(self, total_size: int, threads: int, http_version: str, final_url: str, verify_was_enabled: bool) -> None:
-        self.logger.log(f"File size: {total_size:,} bytes")
-        parsed_url = urlparse(final_url)
-        protocol = "HTTPS" if parsed_url.scheme.lower() == 'https' else "HTTP"
-        details = [http_version.upper()]
-        if protocol == "HTTPS":
-            details.append("TLS")
-            details.append("Verified" if verify_was_enabled else "Unverified")
-        connection_type = f"{protocol} ({', '.join(details)})"
-        self.logger.log(f"Connection Type: {connection_type}")
-        self.logger.log(f"Threads: {threads}")
-
-        self.worker_progress = [0] * threads
-        self.total_loaded = 0
-        self.last_worker_steps = [0] * threads
-        self.last_total_steps = 0
-
-        if total_size > 0:
-            total_steps = max(1, math.ceil(total_size / self.chunk_size_display))
-            self.all_bar = ModernProgressBar(total=total_steps, process_name="TOTAL", spinner_mode=False)
-            self.all_bar.start()
-            if threads > 1:
-                part_size = total_size // threads
-                for i in range(threads):
-                    start = part_size * i
-                    end = total_size - 1 if i == threads - 1 else start + part_size - 1
-                    size_for_this_thread = end - start + 1
-
-                    total_progress_units = max(1, math.ceil(size_for_this_thread / self.chunk_size_display))
-                    bar = ModernProgressBar(total=total_progress_units, process_name=f"DL #{i+1}", spinner_mode=False)
-                    bar.start()
-                    self.thread_bars.append(bar)
+        self.console.print(Panel(
+            f"[bold]URL[/bold]: {final_url}\n"
+            f"[bold]File Size[/bold]: {decimal(total_size)}\n"
+            f"[bold]Threads[/bold]: {threads}\n"
+            f"[bold]HTTP Version[/bold]: {http_version}\n"
+            f"[bold]SSL/TLS Verify[/bold]: {'Enabled' if verify_was_enabled else '[yellow]Disabled[/yellow]'}",
+            title="Download Information",
+            border_style="green",
+            expand=False
+        ))
+        self.overall_task = self.progress.add_task("[bold green]Download", total=total_size)
+        if threads > 1:
+            part_size = total_size // threads
+            for i in range(threads):
+                task_total = total_size - (part_size * i) if i == threads - 1 else part_size
+                self.worker_tasks.append(self.progress.add_task(f"Worker {i+1}", total=task_total))
 
     async def on_update(self, worker_id: int, loaded: int) -> None:
-        if self.thread_bars and worker_id < len(self.thread_bars):
-            self.worker_progress[worker_id] += loaded
-            current_worker_steps = self.worker_progress[worker_id] // self.chunk_size_display
-            steps_to_advance = current_worker_steps - self.last_worker_steps[worker_id]
-            if steps_to_advance > 0:
-                self.thread_bars[worker_id].update(steps_to_advance)
-                self.last_worker_steps[worker_id] = current_worker_steps
-
-        if self.all_bar:
-            self.total_loaded += loaded
-            current_total_steps = self.total_loaded // self.chunk_size_display
-            steps_to_advance = current_total_steps - self.last_total_steps
-            if steps_to_advance > 0:
-                self.all_bar.update(steps_to_advance)
-                self.last_total_steps = current_total_steps
-
-    async def on_complete(self) -> None:
-        if self.all_bar:
-            self.all_bar.finish()
-
-        for b in self.thread_bars:
-            b.finish()
+        if self.overall_task is not None:
+            self.progress.update(self.overall_task, advance=loaded)
+        if self.worker_tasks and worker_id < len(self.worker_tasks):
+            self.progress.update(self.worker_tasks[worker_id], advance=loaded)
 
     async def on_merge_start(self, total_size: int) -> None:
-        self.merge_accumulated = 0
-        if total_size > 0:
-            total_steps = max(1, math.ceil(total_size / self.chunk_size_display))
-            self.merge_bar = ModernProgressBar(total=total_steps, process_name="MERGE", spinner_mode=False)
-            self.merge_bar.start()
+        self.merge_task = self.progress.add_task("[bold cyan]Merge", total=total_size)
 
     async def on_merge_update(self, loaded: int) -> None:
-        if self.merge_bar:
-            self.merge_accumulated += loaded
-            steps_to_advance = self.merge_accumulated // self.chunk_size_display
-            if steps_to_advance > 0:
-                self.merge_bar.update(steps_to_advance)
-                self.merge_accumulated %= self.chunk_size_display
-
-    async def on_merge_complete(self) -> None:
-        if self.merge_bar:
-            self.merge_bar.finish()
+        if self.merge_task is not None:
+            self.progress.update(self.merge_task, advance=loaded)
 
     async def on_slowdown(self, msg: str) -> None:
-        self.logger.log(msg, "WARN")
+        self.console.print(f"[yellow]W[/yellow] {msg}")
 
     async def on_error(self, msg: str) -> None:
-        self.logger.log(msg, "ERROR")
+        if not self.progress.finished:
+            self.progress.stop()
+        self.console.print(f"[bold red]E[/bold red] {msg}")
 
-async def async_main() -> None:
-    parser = argparse.ArgumentParser(prog='fastget', description='Modern High-Performance Downloader')
-    parser.add_argument('url', help="Target URL")
-    parser.add_argument('-o', '--output', help="File destination")
-    parser.add_argument('-X', '--method', default='GET', choices=["GET", "POST"], help="HTTP method (GET/POST)")
-    parser.add_argument('-d', '--data', help="Data for POST method")
-    parser.add_argument('-H', '--header', action='append', help="Custom Headers")
-    parser.add_argument('-t', '--threads', type=int, default=fastget.DEFAULT_THREADS, help="Number of threads to use for downloading")
-    parser.add_argument('-p', '--print', dest='print_to_stdout', action='store_true', help="Output data directly to stdout without saving to a file")
-    parser.add_argument('-s', '--storage', '--low-memory', dest='low_memory', action='store_true', help="Utilize storage efficiently to reduce memory usage during internal processes such as downloading and merging.")
-    parser.add_argument('-m', '--memory', '--low-storage', dest='low_storage', action='store_true', help="Utilize memory efficiently to reduce maximum concurrent storage usage during internal processes such as downloading and merging.")
-    parser.add_argument('--no-verify', action='store_true', help="In the case of HTTPS, if a secure connection cannot be established, the system will continue to operate normally.")
-    parser.add_argument('--no-info', action='store_true', help="Suppresses all displays such as progress bars. If --print is used, only data is output to stdout.")
-    parser.add_argument('--no-http1', action='store_true', help="Do not use HTTP/1 or HTTP/1.1")
-    parser.add_argument('--no-http2', action='store_true', help="Do not use HTTP/2")
+class SilentProgressCallback(ProgressCallback):
+    def __init__(self, console: "Console"):
+        self.console = console
 
+    async def on_error(self, msg: str) -> None:
+        self.console.print(f"[bold red]E[/bold red] {msg}")
+
+async def main():
+    parser = argparse.ArgumentParser(prog="fastget", description=f"High-speed File Downloading Tool", formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("url", help="URL to download from.")
+    parser.add_argument("-o", "--output", help="Path to save the file. If not specified, it's inferred from the URL.")
+    parser.add_argument("-t", "--threads", type=int, default=DEFAULT_THREADS, help=f"Number of parallel connections. (default: {DEFAULT_THREADS})")
+    parser.add_argument( "-X", "--request", default="GET", choices=["GET", "POST"], help="HTTP method to use. (default: GET)")
+    parser.add_argument( "-H", "--header", action="append", help="Custom header to send with the request (e.g., 'User-Agent: my-app/1.0').\nCan be specified multiple times.")
+    parser.add_argument("-d", "--data", help="Data to send in a POST request.")
+    parser.add_argument("--no-verify", action="store_false", dest="verify", help="Disable SSL/TLS certificate verification.")
+    parser.add_argument("--no-info", action="store_true", help="Silent mode. Suppress progress bar and other info.\nErrors are still printed to stderr.")
+    parser.add_argument("--no-http1", action="store_false", dest="http1", help="Disable HTTP/1.x and force HTTP/2.")
+    parser.add_argument("--no-http2", action="store_false", dest="http2", help="Disable HTTP/2 and force HTTP/1.x.")
+    parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {VERSION}")
     args = parser.parse_args()
 
     if args.no_info:
-        class DummyLogger:
-            def log(self, *args, **kwargs):
-                pass
-        logger = DummyLogger()
-        callback = fastget.ProgressCallback()
+        console = Console(stderr=True, quiet=True)
+        callback = SilentProgressCallback(console)
+        progress = None
     else:
-        logger = ModernLogging("fastget")
-        callback = CLIProgress(logger)
+        console = Console()
+        progress = Progress(
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            DownloadColumn(),
+            TransferSpeedColumn(),
+            TextColumn("ETA:"),
+            TimeRemainingColumn(),
+            console=console,
+            transient=True
+        )
+        callback = RichProgressCallback(console, progress)
 
-    headers = {}
+    output_path = args.output
+    if not output_path:
+        try:
+            parsed_url = urlparse(args.url)
+            filename = os.path.basename(unquote(parsed_url.path))
+            if not filename:
+                console.print("[bold red]E[/bold red] Cannot determine output filename from URL. Please specify it with the -o/--output option.")
+                sys.exit(1)
+            output_path = filename
+        except Exception as e:
+            console.print(f"[bold red]E[/bold red] Invalid URL provided: {e}")
+            sys.exit(1)
+
+    headers: Dict[str, str] = {}
     if args.header:
         for h in args.header:
-            if ':' in h:
-                k, v = h.split(':', 1)
-                headers[k.strip()] = v.strip()
+            if ":" in h:
+                key, value = h.split(":", 1)
+                headers[key.strip()] = value.strip()
+            elif "=" in h:
+                key, value = h.split("=", 1)
+                headers[key.strip()] = value.strip()
+            else:
+                console.print(f"[yellow]W[/yellow] Ignoring malformed header: {h}")
 
-    method = args.method
-    if args.data and method.upper() == 'GET':
-        method = 'POST'
-
-    if args.print_to_stdout:
-        if args.output:
-            logger.log("Warning: Both --output and --print were specified. --output will be ignored.", "WARNING")
-        output = None
-    else:
-        output = args.output
-        if not output:
-            parsed = fastget.urlparse(args.url)
-            output = fastget.unquote(os.path.basename(parsed.path)) or "downloaded_file"
-
-    http1_enabled = not args.no_http1
-    http2_enabled = not args.no_http2
-    if not http1_enabled and not http2_enabled:
-        logger.log("Error: Cannot disable both HTTP/1 and HTTP/2.", "CRITICAL")
-        return
-
-    session = fastget.FastGetSession(
+    session = FastGetSession(
         max_threads=args.threads,
-        http1=http1_enabled,
-        http2=http2_enabled,
-        verify=not args.no_verify
+        http1=args.http1,
+        http2=args.http2,
+        verify=args.verify,
     )
 
-    start_time = asyncio.get_running_loop().time()
-
     try:
-        result = await session.process(
-            method=method,
+        downloader = session.process(
+            method=args.request.upper(),
             url=args.url,
-            output=output,
+            output=output_path,
             data=args.data,
             headers=headers,
-            callback=callback
+            callback=callback,
         )
 
-        if isinstance(result, str):
-            end_time = asyncio.get_running_loop().time()
-            duration_ms = (end_time - start_time) * 1000
-
-            logger.log(f"Completed in {duration_ms:.2f}ms")
-            logger.log(f"Saved to: {result}")
+        if progress:
+            with progress:
+                result = await downloader
         else:
-            sys.stdout.buffer.write(result.content)
+            result = await downloader
 
-    except fastget.FastGetError as e:
-        logger.log(str(e), "CRITICAL")
-    except Exception as e:
-        logger.log(f"Unexpected error: {e}", "CRITICAL")
+        if not args.no_info:
+            console.print(f"[bold green]✔ Downloaded[/bold green] Saved to '{result}'")
 
-def main() -> None:
+    except (FastGetError, Exception) as e:
+        if not isinstance(callback, RichProgressCallback) or (isinstance(callback, RichProgressCallback) and callback.progress.finished):
+            console.print(f"[bold red]E[/bold red] {e}")
+
+        if output_path:
+            if os.path.exists(output_path):
+                try: os.remove(output_path)
+                except OSError: pass
+
+            out_dir = os.path.dirname(output_path) or '.'
+            out_base = os.path.basename(output_path)
+            for i in range(args.threads):
+                part_path = os.path.join(out_dir, f"{out_base}.part{i}")
+                if os.path.exists(part_path):
+                    try: os.remove(part_path)
+                    except OSError: pass
+        sys.exit(1)
+
+def run():
     try:
-        import uvloop
-        uvloop.install()
-    except ImportError:
-        pass
-
-    asyncio.run(async_main())
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        Console().print("\n[yellow]W[/yellow] Aborted.")
+        sys.exit(130)
 
 if __name__ == "__main__":
-    main()
+    run()
