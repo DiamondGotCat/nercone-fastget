@@ -43,12 +43,16 @@ class RichProgressCallback(ProgressCallback):
 
     async def on_start(self, total_size: int, threads: int, http_version: str, final_url: str, verify_was_enabled: bool) -> None:
         terminal_size = shutil.get_terminal_size()
-        self.console.print(f"[bold][blue]Nercone FastGet[/blue] v{VERSION}[/bold]")
-        self.console.print(f"[blue]URL           :[/blue] {final_url[:terminal_size.columns-19] + '...' if len(final_url) > terminal_size.columns-16 else final_url}")
-        self.console.print(f"[blue]Filesize      :[/blue] {decimal(total_size)}")
-        self.console.print(f"[blue]Threads       :[/blue] {threads}")
-        self.console.print(f"[blue]HTTP Version  :[/blue] {http_version}")
-        self.console.print(f"[blue]SSL/TLS Verify:[/blue] {'Enabled' if verify_was_enabled else '[yellow]Disabled[/yellow]'}")
+        print(f"Nercone FastGet v{VERSION}\n")
+        url_line = f"[blue]Final URL   :[/blue] {final_url[:terminal_size.columns-19] + '...' if len(final_url) > terminal_size.columns-16 else final_url}"
+        self.console.print("[bold blue]" + "Download Information ".ljust(len(url_line), "─") + "[/bold blue]")
+        self.console.print(url_line)
+        self.console.print(f"[blue]Filesize    :[/blue] [white not bold]{decimal(total_size)}[/white not bold]")
+        self.console.print(f"[blue]Threads     :[/blue] {f'[green]{threads} threads[/green]' if threads > 1 else '[yellow]Single-threaded[/yellow]'}")
+        self.console.print(f"[blue]HTTP Version:[/blue] [white not bold]{http_version}[/white not bold]")
+        self.console.print(f"[blue]TLS Verify  :[/blue] {'Enabled' if verify_was_enabled else '[yellow]Disabled[/yellow]'}")
+        self.console.print("[bold blue]" + "─" * len(url_line) + "[/bold blue]")
+        print()
         self.overall_task = self.progress.add_task("[bold green]Download", total=total_size)
         if threads > 1:
             part_size = total_size // threads
