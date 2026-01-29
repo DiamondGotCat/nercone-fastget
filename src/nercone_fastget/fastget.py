@@ -87,7 +87,6 @@ class FastGetSession:
 
         try:
             head_resp = await client.head(url=url, headers=headers)
-
             if head_resp.status_code < 400:
                 resp = head_resp
             else:
@@ -97,10 +96,9 @@ class FastGetSession:
 
             size = int(resp.headers.get("content-length", 0))
             accept_ranges = resp.headers.get("accept-ranges", "").lower() == "bytes"
-            reject_fg = resp.headers.get("rejectfastget", "").lower() in ["true", "1", "yes"]
+            reject_fg = resp.headers.get("rejectfastget", "").lower() in ["1", "y", "yes", "true", "enabled"]
 
             return size, accept_ranges, reject_fg, resp
-
         except Exception:
             return 0, False, True, None
 
@@ -142,16 +140,16 @@ class FastGetSession:
             use_parallel = True
             if method.upper() != "GET":
                 use_parallel = False
-                await callback.on_slowdown("Parallel download are currently only supported with the GET method. Using single-threaded download.")
+                await callback.on_slowdown("Parallel download are currently only supported with the GET method.")
             elif not is_resumable:
                 use_parallel = False
-                await callback.on_slowdown("Server does not support download range specification. Using single-threaded download.")
+                await callback.on_slowdown("Server does not support download range specification.")
             elif is_rejected:
                 use_parallel = False
-                await callback.on_slowdown("The server rejected Parallel FastGet download. Using single-threaded download.")
+                await callback.on_slowdown("The server rejected Parallel FastGet download.")
             elif not file_size > 0:
                 use_parallel = False
-                await callback.on_slowdown("The file size reported by the server is invalid. Using single-threaded download.")
+                await callback.on_slowdown("The file size reported by the server is invalid.")
             threads = self.max_threads if use_parallel else 1
 
             http_version = info_response.http_version if info_response else "HTTP/1.1"

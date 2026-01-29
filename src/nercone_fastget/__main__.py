@@ -40,19 +40,20 @@ class RichProgressCallback(ProgressCallback):
         self.overall_task: Optional[int] = None
         self.worker_tasks: List[int] = []
         self.merge_task: Optional[int] = None
+        self.slowdown_msg: str | None = None
 
     async def on_start(self, total_size: int, threads: int, http_version: str, final_url: str, verify_was_enabled: bool) -> None:
         terminal_size = shutil.get_terminal_size()
-        print(f"Nercone FastGet v{VERSION}\n")
-        url_line = f"[blue]Final URL   :[/blue] {final_url[:terminal_size.columns-19] + '...' if len(final_url) > terminal_size.columns-16 else final_url}"
-        self.console.print("[bold blue]" + "Download Information ".ljust(len(url_line), "─") + "[/bold blue]")
-        self.console.print(url_line)
-        self.console.print(f"[blue]Filesize    :[/blue] [white not bold]{decimal(total_size)}[/white not bold]")
-        self.console.print(f"[blue]Threads     :[/blue] {f'[green]{threads} threads[/green]' if threads > 1 else '[yellow]Single-threaded[/yellow]'}")
-        self.console.print(f"[blue]HTTP Version:[/blue] [white not bold]{http_version}[/white not bold]")
-        self.console.print(f"[blue]TLS Verify  :[/blue] {'Enabled' if verify_was_enabled else '[yellow]Disabled[/yellow]'}")
-        self.console.print("[bold blue]" + "─" * len(url_line) + "[/bold blue]")
-        print()
+        self.console.print(f"[blue]     ______           __  ______     __\n    / ____/___ ______/ /_/ ____/__  / /_\n   / /_  / __ `/ ___/ __/ / __/ _ \\/ __/\n  / __/ / /_/ (__  ) /_/ /_/ /  __/ /_\n /_/    \\__,_/____/\\__/\\____/\\___/\\__/    [not bold]v{VERSION}[/not bold][/blue]")
+        self.console.print("[blue]" + "─" * terminal_size.columns + "[/blue]")
+        self.console.print(f"[blue] Final URL   [/blue] {final_url[:terminal_size.columns-18] + '...' if len(final_url) > terminal_size.columns-15 else final_url}")
+        self.console.print(f"[blue] Filesize    [/blue] {f'[white not bold]{decimal(total_size)}[/white not bold]' if total_size != 0 else '[yellow]Unknown[/yellow]'}")
+        self.console.print(f"[blue] Threads     [/blue] {f'[white not bold]{threads} threads[/white not bold]' if threads > 1 else '[yellow]Single-threaded[/yellow]'}")
+        self.console.print(f"[blue] HTTP Version[/blue] [white not bold]{http_version}[/white not bold]")
+        self.console.print(f"[blue] TLS Verify  [/blue] {'Enabled' if verify_was_enabled else '[yellow]Disabled[/yellow]'}")
+        self.console.print("[blue]" + "─" * terminal_size.columns + "[/blue]")
+        if self.slowdown_msg is not None:
+            self.console.print(f"[yellow]↓ Force using single-threaded download[/yellow] because {self.slowdown_msg}")
         self.overall_task = self.progress.add_task("[bold green]Download", total=total_size)
         if threads > 1:
             part_size = total_size // threads
@@ -74,19 +75,19 @@ class RichProgressCallback(ProgressCallback):
             self.progress.update(self.merge_task, advance=loaded)
 
     async def on_slowdown(self, msg: str) -> None:
-        self.console.print(f"[yellow]W[/yellow] {msg}")
+        self.slowdown_msg = msg
 
     async def on_error(self, msg: str) -> None:
         if not self.progress.finished:
             self.progress.stop()
-        self.console.print(f"[bold red]E[/bold red] {msg}")
+        self.console.print(f"[red]× Exception[/red] {msg}")
 
 class SilentProgressCallback(ProgressCallback):
     def __init__(self, console: "Console"):
         self.console = console
 
     async def on_error(self, msg: str) -> None:
-        self.console.print(f"[bold red]E[/bold red] {msg}")
+        self.console.print(f"[red]× Exception[/red] {msg}")
 
 async def main():
     parser = argparse.ArgumentParser(prog="fastget", description=f"High-speed File Downloading Tool", formatter_class=argparse.RawTextHelpFormatter)
@@ -127,11 +128,11 @@ async def main():
             parsed_url = urlparse(args.url)
             filename = os.path.basename(unquote(parsed_url.path))
             if not filename:
-                console.print("[bold red]E[/bold red] Cannot determine output filename from URL. Please specify it with the -o/--output option.")
+                console.print("[red]× Exception[/red] Cannot determine output filename from URL. Please specify it with the -o/--output option.")
                 sys.exit(1)
             output_path = filename
         except Exception as e:
-            console.print(f"[bold red]E[/bold red] Invalid URL provided: {e}")
+            console.print(f"[red]× Exception[/red] {e}")
             sys.exit(1)
 
     headers: Dict[str, str] = {}
@@ -144,7 +145,7 @@ async def main():
                 key, value = h.split("=", 1)
                 headers[key.strip()] = value.strip()
             else:
-                console.print(f"[yellow]W[/yellow] Ignoring malformed header: {h}")
+                console.print(f"[yellow]! Warning[/yellow] Ignoring malformed header: {h}")
 
     session = FastGetSession(
         max_threads=args.threads,
@@ -170,11 +171,11 @@ async def main():
             result = await downloader
 
         if not args.no_info:
-            console.print(f"[bold green]✔ Downloaded[/bold green] to '{result}'")
+            console.print(f"[green]✔ Downloaded[/green] to [grey70 not bold]{result}[/grey70 not bold]")
 
     except (FastGetError, Exception) as e:
         if not isinstance(callback, RichProgressCallback) or (isinstance(callback, RichProgressCallback) and callback.progress.finished):
-            console.print(f"[bold red]E[/bold red] {e}")
+            console.print(f"[red]× Exception[/red] {e}")
 
         if output_path:
             if os.path.exists(output_path):
@@ -194,7 +195,7 @@ def run():
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        Console().print("\n[yellow]W[/yellow] Aborted.")
+        Console().print("\n[yellow]! Aborted[/yellow]")
         sys.exit(130)
 
 if __name__ == "__main__":
