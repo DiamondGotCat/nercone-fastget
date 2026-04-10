@@ -44,7 +44,7 @@ class RichProgressCallback(ProgressCallback):
 
     async def on_start(self, total_size: int, threads: int, http_version: str, final_url: str, verify_was_enabled: bool) -> None:
         terminal_size = shutil.get_terminal_size()
-        self.console.print(f"[blue]     ______           __  ______     __\n    / ____/___ ______/ /_/ ____/__  / /_\n   / /_  / __ `/ ___/ __/ / __/ _ \\/ __/\n  / __/ / /_/ (__  ) /_/ /_/ /  __/ /_\n /_/    \\__,_/____/\\__/\\____/\\___/\\__/    [not bold]v{VERSION}[/not bold][/blue]")
+        self.console.print(f"[blue not bold]     ______           __  ______     __\n    / ____/___ ______/ /_/ ____/__  / /_\n   / /_  / __ `/ ___/ __/ / __/ _ \\/ __/\n  / __/ / /_/ (__  ) /_/ /_/ /  __/ /_\n /_/    \\__,_/____/\\__/\\____/\\___/\\__/    v{VERSION}[/blue not bold]")
         self.console.print("[blue]" + "─" * terminal_size.columns + "[/blue]")
         self.console.print(f"[blue] Final URL   [/blue] {final_url[:terminal_size.columns-18] + '...' if len(final_url) > terminal_size.columns-15 else final_url}")
         self.console.print(f"[blue] Filesize    [/blue] {f'[white not bold]{decimal(total_size)}[/white not bold]' if total_size != 0 else '[yellow]Unknown[/yellow]'}")
