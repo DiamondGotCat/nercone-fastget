@@ -4,17 +4,17 @@ build-backend = "uv_build"
 
 [project]
 name = "nercone-fastget"
-version = "6.5.1"
+version = "7.0.0"
 description = "High-speed File Downloading Tool"
 readme = { file = "README.md", content-type = "text/markdown" }
 authors = [
     { name = "Nercone", email = "nercone@nercone.dev" }
 ]
 license = { text = "MIT" }
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dependencies = [
-    "rich",
-    "httpx[http2]"
+    "httpx[http2]",
+    "nercone-modern"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -23,4 +23,4 @@ classifiers = [
 ]
 
 [project.scripts]
-fastget = "nercone_fastget.__main__:run"
+fastget = "nercone_fastget.cli:main"
