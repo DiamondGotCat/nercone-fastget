@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_レイヤー_1" data-name="レイヤー 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640">
+  <defs>
+    <style>
+      .cls-1, .cls-2, .cls-3 {
+        fill: #e0e0e0;
+      }
+
+      .cls-4 {
+        font-family: NerconeMonoJP-Regular, 'Nercone Mono JP';
+        font-size: 16px;
+      }
+
+      .cls-5 {
+        fill: #1e1e1e;
+      }
+
+      .cls-2 {
+        opacity: .25;
+      }
+
+      .cls-3, .cls-6 {
+        opacity: .5;
+      }
+
+      .cls-7 {
+        fill: #50a0c8;
+      }
+
+      .cls-8 {
+        fill: #60c0ff;
+      }
+
+      .cls-9 {
+        fill: #00c878;
+      }
+    </style>
+  </defs>
+  <rect class="cls-5" width="1280" height="640"/>
+  <text class="cls-4" transform="translate(23.58 34.53)"><tspan class="cls-2"><tspan x="0" y="0">$ fastget https://download.opensuse.org/tumbleweed/iso/openSUSE-Tumbleweed-DVD-x86_64-Current.iso</tspan></tspan><tspan class="cls-1"><tspan x="0" y="28" xml:space="preserve">HTTP/2 GET https://download.opensuse.org/tumbleweed/iso/openSUSE-Tumbleweed-DVD-x86_64-Current.iso            </tspan><tspan class="cls-6" x="1059.61" y="28">8 threads / 4.2 GB</tspan></tspan><tspan class="cls-8" x="0" y="56">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Download</tspan><tspan class="cls-1" x="1088.51" y="56"> </tspan><tspan class="cls-3" x="1098.14" y="56">DONE</tspan><tspan class="cls-7" x="0" y="84">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Thread 1</tspan><tspan class="cls-1" x="1088.51" y="84"> </tspan><tspan class="cls-3" x="1098.14" y="84">DONE</tspan><tspan class="cls-1" x="1136.67" y="84" xml:space="preserve"> 533.2 MiB</tspan><tspan class="cls-7" x="0" y="112">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Thread 2</tspan><tspan class="cls-1" x="1088.51" y="112"> </tspan><tspan class="cls-3" x="1098.14" y="112">DONE</tspan><tspan class="cls-1" x="1136.67" y="112" xml:space="preserve"> 533.2 MiB</tspan><tspan class="cls-7" x="0" y="140">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Thread 3</tspan><tspan class="cls-1" x="1088.51" y="140"> </tspan><tspan class="cls-3" x="1098.14" y="140">DONE</tspan><tspan class="cls-1" x="1136.67" y="140" xml:space="preserve"> 533.2 MiB</tspan><tspan class="cls-7" x="0" y="168">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Thread 4</tspan><tspan class="cls-1" x="1088.51" y="168"> </tspan><tspan class="cls-3" x="1098.14" y="168">DONE</tspan><tspan class="cls-1" x="1136.67" y="168" xml:space="preserve"> 533.2 MiB</tspan><tspan class="cls-7" x="0" y="196">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Thread 5</tspan><tspan class="cls-1" x="1088.51" y="196"> </tspan><tspan class="cls-3" x="1098.14" y="196">DONE</tspan><tspan class="cls-1" x="1136.67" y="196" xml:space="preserve"> 533.2 MiB</tspan><tspan class="cls-7" x="0" y="224">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Thread 6</tspan><tspan class="cls-1" x="1088.51" y="224"> </tspan><tspan class="cls-3" x="1098.14" y="224">DONE</tspan><tspan class="cls-1" x="1136.67" y="224" xml:space="preserve"> 533.2 MiB</tspan><tspan class="cls-7" x="0" y="252">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Thread 7</tspan><tspan class="cls-1" x="1088.51" y="252"> </tspan><tspan class="cls-3" x="1098.14" y="252">DONE</tspan><tspan class="cls-1" x="1136.67" y="252" xml:space="preserve"> 533.2 MiB</tspan><tspan class="cls-7" x="0" y="280">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Thread 8</tspan><tspan class="cls-1" x="1088.51" y="280"> </tspan><tspan class="cls-3" x="1098.14" y="280">DONE</tspan><tspan class="cls-1" x="1136.67" y="280" xml:space="preserve"> 533.2 MiB</tspan><tspan class="cls-9" x="0" y="308">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Merge</tspan><tspan class="cls-1" x="1059.61" y="308" xml:space="preserve">    </tspan><tspan class="cls-3" x="1098.14" y="308">DONE</tspan><tspan class="cls-1" x="1136.67" y="308" xml:space="preserve"> 4.2 GiB</tspan><tspan class="cls-9" x="0" y="336">Downloaded</tspan><tspan class="cls-1" x="96.33" y="336" xml:space="preserve"> to openSUSE-Tumbleweed-DVD-x86_64-Current.iso 4.2GiB</tspan></text>
+</svg>

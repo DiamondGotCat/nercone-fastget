@@ -82,7 +82,7 @@ class CLICallback(Callback):
                 bar.finish()
 
     async def on_merge_start(self, size: int) -> None:
-        self.merge_bar = ProgressBar(process_name="Merge", total=size if size > 0 else 1, primary_color="green")
+        self.merge_bar = ProgressBar(process_name="Merge", total=size if size > 0 else 1, primary_color="bright_green")
 
     async def on_merge_update(self, downloaded: int) -> None:
         if self.merge_bar is None:
@@ -125,4 +125,4 @@ def main():
         sys.exit(1)
 
     output_path.write_bytes(response.content)
-    print(f"{Color.from_name('green')}Downloaded{Color.from_name('reset')} to {output_path} {Color.from_name('grey')}{human_size(len(response.content))}{Color.from_name('reset')}")
+    print(f"{Color.from_name('bright_green')}Downloaded{Color.from_name('reset')} to {output_path} {Color.from_name('grey')}{human_size(len(response.content))}{Color.from_name('reset')}")
