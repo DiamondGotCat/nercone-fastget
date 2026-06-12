@@ -22,16 +22,16 @@ class CLICallback(Callback):
         self.bars: list[ProgressBar] = []
         self.total_bar: ProgressBar | None = None
         self.merge_bar: ProgressBar | None = None
-        self._unknown_size = False
-        self._unknown_rendered = 0
+        self.unknown_size = False
+        self.unknown_rendered = 0
 
     async def on_start(self, size: int, threads: int, http_version: int, url: str) -> None:
         print(f"HTTP/{http_version} GET {url} {Color.from_name('grey')}{threads} thread{'s' if threads > 1 else ''} / {human_size(size) if size else 'Size unknown'}{Color.from_name('reset')}")
 
         if size == 0:
             if threads == 1:
-                self._unknown_size = True
-                bar = ProgressBar(process_name="Downloading", total=1)
+                self.unknown_size = True
+                bar = ProgressBar(process_name="Download", total=1)
                 self.bars.append(bar)
             return
 
@@ -44,16 +44,16 @@ class CLICallback(Callback):
             self.total_bar = ProgressBar(process_name="Download", total=size if size > 0 else 1, primary_color="bright_blue")
 
         for i in range(threads):
-            bar = ProgressBar(process_name=f"Thread {i + 1}" if threads > 1 else "Downloading", total=chunk_sizes[i])
+            bar = ProgressBar(process_name=f"Thread {i + 1}" if threads > 1 else "Download", total=chunk_sizes[i])
             self.bars.append(bar)
 
     async def on_update(self, thread: int, downloaded: int) -> None:
         if thread >= len(self.bars):
             return
         bar = self.bars[thread]
-        if self._unknown_size:
-            if downloaded >= self._unknown_rendered + progress_threshold:
-                self._unknown_rendered = downloaded
+        if self.unknown_size:
+            if downloaded >= self.unknown_rendered + progress_threshold:
+                self.unknown_rendered = downloaded
                 bar.set_message(human_size(downloaded))
                 bar.render()
             return
