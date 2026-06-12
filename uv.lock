@@ -121,7 +121,7 @@ wheels = [
 
 [[package]]
 name = "nercone-fastget"
-version = "7.0.0"
+version = "7.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx", extra = ["http2"] },

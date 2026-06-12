@@ -1,9 +1,10 @@
 import sys
+import shutil
 import asyncio
 import argparse
 from pathlib import Path
+from strip_ansi import strip_ansi
 from urllib.parse import urlparse
-
 from nercone_modern import Color, ProgressBar
 
 from .lib import Callback, FastGet
@@ -26,7 +27,16 @@ class CLICallback(Callback):
         self.unknown_rendered = 0
 
     async def on_start(self, size: int, threads: int, http_version: int, url: str) -> None:
-        print(f"HTTP/{http_version} GET {url} {Color.from_name('grey')}{threads} thread{'s' if threads > 1 else ''} / {human_size(size) if size else 'Size unknown'}{Color.from_name('reset')}")
+        left  = f"HTTP/{http_version} GET {url}"
+        right = f"{Color.from_name('grey')}{threads} thread{'s' if threads > 1 else ''} / {human_size(size) if size else 'Size unknown'}{Color.from_name('reset')}"
+
+        left_len  = len(strip_ansi(left))
+        right_len = len(strip_ansi(right))
+
+        terminal_size = shutil.get_terminal_size((left_len + right_len + 1, 1))
+        fit = (left_len + right_len + 1) <= terminal_size.columns
+
+        print((left if fit else left[:(terminal_size.columns - right_len - 4)] + "...") + ((" " * (terminal_size.columns - left_len - right_len) if fit else " ") + right))
 
         if size == 0:
             if threads == 1:
