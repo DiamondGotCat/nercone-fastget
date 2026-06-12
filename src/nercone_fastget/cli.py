@@ -11,11 +11,11 @@ from .lib import Callback, FastGet
 progress_threshold = 1024 * 100 # 100 KiB
 
 def human_size(n: int) -> str:
-    for unit in ("B", "KB", "MB", "GB", "TB"):
+    for unit in ("B", "KiB", "MiB", "GiB", "TiB"):
         if n < 1024:
             return f"{n:.1f} {unit}"
         n /= 1024
-    return f"{n:.1f} PB"
+    return f"{n:.1f} PiB"
 
 class CLICallback(Callback):
     def __init__(self):
