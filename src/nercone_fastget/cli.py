@@ -8,7 +8,7 @@ from nercone_modern import Color, ProgressBar
 
 from .lib import Callback, FastGet
 
-progress_threshold = 10 * 1024
+progress_threshold = 1024 * 100 # 100 KiB
 
 def human_size(n: int) -> str:
     for unit in ("B", "KB", "MB", "GB", "TB"):
@@ -72,7 +72,7 @@ class CLICallback(Callback):
                 bar.finish()
 
     async def on_merge_start(self, size: int) -> None:
-        self.merge_bar = ProgressBar(process_name="Merging", total=size if size > 0 else 1, bar_length=50, primary_color="green")
+        self.merge_bar = ProgressBar(process_name="Merge", total=size if size > 0 else 1, primary_color="green")
 
     async def on_merge_update(self, downloaded: int) -> None:
         if self.merge_bar is None:
