@@ -5,7 +5,7 @@ import argparse
 from pathlib import Path
 from strip_ansi import strip_ansi
 from urllib.parse import urlparse
-from nercone_modern import Color, ProgressBar
+from modern import Color, ProgressBar
 
 from .lib import Callback, FastGet
 
@@ -41,7 +41,7 @@ class CLICallback(Callback):
         if size == 0:
             if threads == 1:
                 self.unknown_size = True
-                bar = ProgressBar(process_name="Download", total=1)
+                bar = ProgressBar(name="Download", total=1)
                 self.bars.append(bar)
             return
 
@@ -51,23 +51,26 @@ class CLICallback(Callback):
             chunk_sizes[-1] = size - chunk_size * (threads - 1)
 
         if threads > 1:
-            self.total_bar = ProgressBar(process_name="Download", total=size if size > 0 else 1, primary_color="bright_blue")
+            self.total_bar = ProgressBar(name="Download", total=size if size > 0 else 1, primary_color="bright_blue")
 
         for i in range(threads):
-            bar = ProgressBar(process_name=f"Thread {i + 1}" if threads > 1 else "Download", total=chunk_sizes[i])
+            bar = ProgressBar(name=f"Thread {i + 1}" if threads > 1 else "Download", total=chunk_sizes[i])
             self.bars.append(bar)
 
     async def on_update(self, thread: int, downloaded: int) -> None:
         if thread >= len(self.bars):
             return
+
         bar = self.bars[thread]
+
         if self.unknown_size:
             if downloaded >= self.unknown_rendered + progress_threshold:
                 self.unknown_rendered = downloaded
                 bar.set_message(human_size(downloaded))
-                bar.render()
             return
+
         delta = downloaded - bar.current
+
         if len(self.bars) == 1 or delta >= progress_threshold:
             bar.set_message(human_size(downloaded))
             bar.update(delta)
@@ -75,14 +78,13 @@ class CLICallback(Callback):
                 self.total_bar.update(delta)
 
     async def on_complete(self) -> None:
-        if self.total_bar is not None and not self.total_bar.completed:
+        if self.total_bar is not None:
             self.total_bar.finish()
         for bar in self.bars:
-            if not bar.completed:
-                bar.finish()
+            bar.finish()
 
     async def on_merge_start(self, size: int) -> None:
-        self.merge_bar = ProgressBar(process_name="Merge", total=size if size > 0 else 1, primary_color="bright_green")
+        self.merge_bar = ProgressBar(name="Merge", total=size if size > 0 else 1, primary_color="bright_green")
 
     async def on_merge_update(self, downloaded: int) -> None:
         if self.merge_bar is None:
@@ -95,8 +97,7 @@ class CLICallback(Callback):
     async def on_merge_complete(self) -> None:
         if self.merge_bar is None:
             return
-        if not self.merge_bar.completed:
-            self.merge_bar.finish()
+        self.merge_bar.finish()
 
     async def on_error(self, message: str) -> None:
         print(f"{Color.from_name('red')}ERROR{Color.from_name('reset')} {message}")
