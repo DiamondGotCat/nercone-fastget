@@ -1,15 +1,17 @@
 import sys
+import time
 import shutil
 import asyncio
 import argparse
 from pathlib import Path
 from strip_ansi import strip_ansi
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 from modern import Color, ProgressBar
+from modern.progressbar import NamePart, PercentagePart, ProgressPart, ETAPart, MessagePart
 
 from .lib import Callback, FastGet
 
-progress_threshold = 1024 * 100 # 100 KiB
+update_interval = 0.2 # 200ms
 
 def human_size(n: int) -> str:
     for unit in ("B", "KiB", "MiB", "GiB", "TiB"):
@@ -23,8 +25,11 @@ class CLICallback(Callback):
         self.bars: list[ProgressBar] = []
         self.total_bar: ProgressBar | None = None
         self.merge_bar: ProgressBar | None = None
+
         self.unknown_size = False
-        self.unknown_rendered = 0
+
+        self.last_update_time: dict[int, float] = {}
+        self.last_merge_update_time = 0.0
 
     async def on_start(self, size: int, threads: int, http_version: int, url: str) -> None:
         left  = f"HTTP/{http_version} GET {url}"
@@ -41,7 +46,7 @@ class CLICallback(Callback):
         if size == 0:
             if threads == 1:
                 self.unknown_size = True
-                bar = ProgressBar(name="Download", total=1)
+                bar = ProgressBar(name="Download", total=1, suffix=[NamePart(), PercentagePart(), ProgressPart(), ETAPart(), MessagePart()])
                 self.bars.append(bar)
             return
 
@@ -51,10 +56,10 @@ class CLICallback(Callback):
             chunk_sizes[-1] = size - chunk_size * (threads - 1)
 
         if threads > 1:
-            self.total_bar = ProgressBar(name="Download", total=size if size > 0 else 1, primary_color="bright_blue")
+            self.total_bar = ProgressBar(name="Download", total=size if size > 0 else 1, primary_color="bright_blue", suffix=[NamePart(), PercentagePart(), ProgressPart(), ETAPart(), MessagePart()])
 
         for i in range(threads):
-            bar = ProgressBar(name=f"Thread {i + 1}" if threads > 1 else "Download", total=chunk_sizes[i])
+            bar = ProgressBar(name=f"Thread {i + 1}" if threads > 1 else "Download", total=chunk_sizes[i], suffix=[NamePart(), PercentagePart(), ProgressPart(), ETAPart(), MessagePart()])
             self.bars.append(bar)
 
     async def on_update(self, thread: int, downloaded: int) -> None:
@@ -64,18 +69,25 @@ class CLICallback(Callback):
         bar = self.bars[thread]
 
         if self.unknown_size:
-            if downloaded >= self.unknown_rendered + progress_threshold:
-                self.unknown_rendered = downloaded
+            now = time.monotonic()
+            if now - self.last_update_time.get(thread, 0.0) >= update_interval:
+                self.last_update_time[thread] = now
                 bar.set_message(human_size(downloaded))
             return
 
         delta = downloaded - bar.current
+        if delta <= 0:
+            return
 
-        if len(self.bars) == 1 or delta >= progress_threshold:
-            bar.set_message(human_size(downloaded))
-            bar.update(delta)
-            if self.total_bar is not None:
-                self.total_bar.update(delta)
+        now = time.monotonic()
+        if downloaded < bar.total and now - self.last_update_time.get(thread, 0.0) < update_interval:
+            return
+        self.last_update_time[thread] = now
+
+        bar.set_message(human_size(downloaded))
+        bar.update(delta)
+        if self.total_bar is not None:
+            self.total_bar.update(delta)
 
     async def on_complete(self) -> None:
         if self.total_bar is not None:
@@ -84,15 +96,22 @@ class CLICallback(Callback):
             bar.finish()
 
     async def on_merge_start(self, size: int) -> None:
-        self.merge_bar = ProgressBar(name="Merge", total=size if size > 0 else 1, primary_color="bright_green")
+        self.merge_bar = ProgressBar(name="Merge", total=size if size > 0 else 1, primary_color="bright_green", suffix=[NamePart(), PercentagePart(), ProgressPart(), ETAPart(), MessagePart()])
 
     async def on_merge_update(self, downloaded: int) -> None:
         if self.merge_bar is None:
             return
         delta = downloaded - self.merge_bar.current
-        if delta >= progress_threshold:
-            self.merge_bar.set_message(human_size(downloaded))
-            self.merge_bar.update(delta)
+        if delta <= 0:
+            return
+
+        now = time.monotonic()
+        if downloaded < self.merge_bar.total and now - self.last_merge_update_time < update_interval:
+            return
+        self.last_merge_update_time = now
+
+        self.merge_bar.set_message(human_size(downloaded))
+        self.merge_bar.update(delta)
 
     async def on_merge_complete(self) -> None:
         if self.merge_bar is None:
@@ -113,9 +132,7 @@ def main():
     if args.output:
         output_path = Path(args.output)
     else:
-        parsed = urlparse(args.url)
-        filename = Path(parsed.path).name or "download"
-        output_path = Path(filename)
+        output_path = Path(unquote(Path(urlparse(args.url).path).name) or "fastget-downloaded")
 
     try:
         response = asyncio.run(FastGet.get(args.url, threads=args.threads, callback=CLICallback()))
