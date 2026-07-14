@@ -108,7 +108,7 @@ class FastGet:
                 )
 
         except Exception as e:
-            await callback.on_error(str(e))
+            await callback.on_error(repr(e))
             raise
         finally:
             if owns_temp_file:
