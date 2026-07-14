@@ -30,7 +30,7 @@ name = "exceptiongroup"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/50/79/66800aadf48771f6b62f7eb014e352e5d06856655206165d775e675a02c9/exceptiongroup-1.3.1.tar.gz", hash = "sha256:8b412432c6055b0b7d14c310000ae93352ed6754f70fa8f7c34141f91c4e3219", size = 30371, upload-time = "2025-11-21T23:01:54.787Z" }
 wheels = [
@@ -121,7 +121,7 @@ wheels = [
 
 [[package]]
 name = "nercone-fastget"
-version = "7.5.0"
+version = "7.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx", extra = ["http2"] },
@@ -136,14 +136,14 @@ requires-dist = [
 
 [[package]]
 name = "nercone-modern"
-version = "5.1.1"
+version = "5.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "strip-ansi" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/68/cb/2f59e936a7bda21d2cf853bdb9dc3eba8a9321f09b00db996ef4297c495b/nercone_modern-5.1.1.tar.gz", hash = "sha256:23f1b7e9d5a328014bc6a1e61ef436c47f03227837c1eee3614f4d3cc61eb42b", size = 6654, upload-time = "2026-07-12T18:15:04.444Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e6/31/c5679cbc3df0e688f465cb9ddf2bd562f4424974390bd17537b89ba08499/nercone_modern-5.2.0.tar.gz", hash = "sha256:6ea34b7fd5c65f3db95f810bc286fe12bd2b03b9204cf4808e23072f544df52c", size = 6941, upload-time = "2026-07-14T06:34:35.38Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0e/45/0767c198727d4eae28c3df660640fee4b10cc12b6a18a92006f9be5965a7/nercone_modern-5.1.1-py3-none-any.whl", hash = "sha256:4c1fe7b5364b22dac5203a6d10b8a99b9f9323f6de56c4997f762e17f6dc35e1", size = 8994, upload-time = "2026-07-12T18:15:03.467Z" },
+    { url = "https://files.pythonhosted.org/packages/39/af/00b81cc4deabdb31308765cbe9a024b23baff6d267ee6f69de5fdfafad5c/nercone_modern-5.2.0-py3-none-any.whl", hash = "sha256:a6b4c412436d2efd450c37762d1821b8a694c367a297728134ea91e87992de2d", size = 9286, upload-time = "2026-07-14T06:34:36.302Z" },
 ]
 
 [[package]]
