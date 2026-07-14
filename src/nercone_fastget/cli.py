@@ -94,6 +94,11 @@ class CLICallback(Callback):
         for bar in self.bars:
             bar.finish()
 
+    async def on_retry(self, thread: int, attempt: int, max_attempts: int, message: str):
+        if thread >= len(self.bars):
+            return
+        self.bars[thread].set_message(f"{Color.from_name('yellow')}retry {attempt}/{max_attempts}: {message}{Color.from_name('reset')}")
+
     async def on_error(self, message: str):
         print(f"{Color.from_name('red')}ERROR{Color.from_name('reset')} {message}")
 
@@ -102,6 +107,7 @@ def main():
     parser.add_argument("url", help="URL to download")
     parser.add_argument("-o", "--output", help="Output file path (default: filename from URL)")
     parser.add_argument("-t", "--threads", type=int, default=8, help="Number of download threads (default: 8)")
+    parser.add_argument("-r", "--retries", type=int, default=5, help="Max retries per thread on transient errors (default: 5)")
 
     args = parser.parse_args()
 
@@ -113,7 +119,7 @@ def main():
     temp_path = output_path.with_name(output_path.name + ".part")
 
     try:
-        asyncio.run(FastGet.get(args.url, threads=args.threads, callback=CLICallback(), temp_path=temp_path))
+        asyncio.run(FastGet.get(args.url, threads=args.threads, callback=CLICallback(), temp_path=temp_path, max_retries=args.retries))
     except KeyboardInterrupt:
         print(f"{Color.from_name('yellow')}Interrupted{Color.from_name('reset')}")
         sys.exit(1)
