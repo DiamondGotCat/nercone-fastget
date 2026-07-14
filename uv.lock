@@ -4,16 +4,16 @@ requires-python = ">=3.10"
 
 [[package]]
 name = "anyio"
-version = "4.14.1"
+version = "4.14.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
     { name = "idna" },
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3b/72/5562aabb8dd7181e8e860622a38bea08d17842b99ecd4c91f84ac95251b0/anyio-4.14.1.tar.gz", hash = "sha256:8d648a3544c1a700e3ff78615cd679e4c5c3f149904287e73687b2596963629e", size = 254831, upload-time = "2026-06-24T20:56:06.017Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/61/cc/a381afa6efea9f496eff839d4a6a1aed3bfafc7b3ab4b0d1b243a12573dd/anyio-4.14.2.tar.gz", hash = "sha256:cfa139f3ed1a23ee8f88a145ddb5ac7605b8bbfd8592baacd7ce3d8bb4313c7f", size = 260176, upload-time = "2026-07-12T20:29:07.082Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b0/7b/90df4a0a816d98d6ea26f559d87836d494a2cf1fcf063be67df50a7bcc30/anyio-4.14.1-py3-none-any.whl", hash = "sha256:4e5533c5b8ff0a24f5d7a176cbe6877129cd183893f66b537f8f227d10527d72", size = 124875, upload-time = "2026-06-24T20:56:04.413Z" },
+    { url = "https://files.pythonhosted.org/packages/da/35/f2287558c17e29fafc8ef3daf819bb9834061cfa43bff8014f7df7f63bdc/anyio-4.14.2-py3-none-any.whl", hash = "sha256:9f505dda5ac9f0c8309b5e8bd445a8c2bf7246f3ce950121e45ea15bc41d1494", size = 125813, upload-time = "2026-07-12T20:29:05.763Z" },
 ]
 
 [[package]]
@@ -136,14 +136,14 @@ requires-dist = [
 
 [[package]]
 name = "nercone-modern"
-version = "4.1.2"
+version = "5.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "strip-ansi" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/06/fe/51ad883805c47b258e4e4acd4973658a701a792acbe9043d7c21ecf3ae5b/nercone_modern-4.1.2.tar.gz", hash = "sha256:7a61eb42192b7dc9332aa0380fd6e40f6afac6981f961d1a0cd2ba966184a411", size = 6066, upload-time = "2026-07-10T21:52:49.616Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/68/cb/2f59e936a7bda21d2cf853bdb9dc3eba8a9321f09b00db996ef4297c495b/nercone_modern-5.1.1.tar.gz", hash = "sha256:23f1b7e9d5a328014bc6a1e61ef436c47f03227837c1eee3614f4d3cc61eb42b", size = 6654, upload-time = "2026-07-12T18:15:04.444Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c8/ac/c83c6305d9b01908cfdc46a75afd7614dd476e0ade8966535020da1c40f8/nercone_modern-4.1.2-py3-none-any.whl", hash = "sha256:e0ecfb39d4ff8938c26bcf07ccff7c2a2a7cf5817ce9f157857ea85fd1746718", size = 8368, upload-time = "2026-07-10T21:52:48.548Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/45/0767c198727d4eae28c3df660640fee4b10cc12b6a18a92006f9be5965a7/nercone_modern-5.1.1-py3-none-any.whl", hash = "sha256:4c1fe7b5364b22dac5203a6d10b8a99b9f9323f6de56c4997f762e17f6dc35e1", size = 8994, upload-time = "2026-07-12T18:15:03.467Z" },
 ]
 
 [[package]]
