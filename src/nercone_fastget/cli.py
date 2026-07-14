@@ -3,6 +3,7 @@ import time
 import shutil
 import asyncio
 import argparse
+from typing import Optional, List, Dict
 from pathlib import Path
 from strip_ansi import strip_ansi
 from urllib.parse import urlparse, unquote
@@ -22,16 +23,14 @@ def human_size(n: int) -> str:
 
 class CLICallback(Callback):
     def __init__(self):
-        self.bars: list[ProgressBar] = []
-        self.total_bar: ProgressBar | None = None
-        self.merge_bar: ProgressBar | None = None
+        self.bars: List[ProgressBar] = []
+        self.total_bar: Optional[ProgressBar] = None
 
         self.unknown_size = False
 
-        self.last_update_time: dict[int, float] = {}
-        self.last_merge_update_time = 0.0
+        self.last_update_time: Dict[int, float] = {}
 
-    async def on_start(self, size: int, threads: int, http_version: int, url: str) -> None:
+    async def on_start(self, size: int, threads: int, http_version: int, url: str):
         left  = f"HTTP/{http_version} GET {url}"
         right = f"{Color.from_name('grey')}{threads} thread{'s' if threads > 1 else ''} / {human_size(size) if size else 'Size unknown'}{Color.from_name('reset')}"
 
@@ -62,7 +61,7 @@ class CLICallback(Callback):
             bar = ProgressBar(name=f"Thread {i + 1}" if threads > 1 else "Download", total=chunk_sizes[i], suffix=[NamePart(), PercentagePart(), ProgressPart(), ETAPart(), MessagePart()])
             self.bars.append(bar)
 
-    async def on_update(self, thread: int, downloaded: int) -> None:
+    async def on_update(self, thread: int, downloaded: int):
         if thread >= len(self.bars):
             return
 
@@ -89,36 +88,13 @@ class CLICallback(Callback):
         if self.total_bar is not None:
             self.total_bar.update(delta)
 
-    async def on_complete(self) -> None:
+    async def on_complete(self):
         if self.total_bar is not None:
             self.total_bar.finish()
         for bar in self.bars:
             bar.finish()
 
-    async def on_merge_start(self, size: int) -> None:
-        self.merge_bar = ProgressBar(name="Merge", total=size if size > 0 else 1, primary_color="bright_green", suffix=[NamePart(), PercentagePart(), ProgressPart(), ETAPart(), MessagePart()])
-
-    async def on_merge_update(self, downloaded: int) -> None:
-        if self.merge_bar is None:
-            return
-        delta = downloaded - self.merge_bar.current
-        if delta <= 0:
-            return
-
-        now = time.monotonic()
-        if downloaded < self.merge_bar.total and now - self.last_merge_update_time < update_interval:
-            return
-        self.last_merge_update_time = now
-
-        self.merge_bar.set_message(human_size(downloaded))
-        self.merge_bar.update(delta)
-
-    async def on_merge_complete(self) -> None:
-        if self.merge_bar is None:
-            return
-        self.merge_bar.finish()
-
-    async def on_error(self, message: str) -> None:
+    async def on_error(self, message: str):
         print(f"{Color.from_name('red')}ERROR{Color.from_name('reset')} {message}")
 
 def main():
@@ -134,13 +110,15 @@ def main():
     else:
         output_path = Path(unquote(Path(urlparse(args.url).path).name) or "fastget-downloaded")
 
+    temp_path = output_path.with_name(output_path.name + ".part")
+
     try:
-        response = asyncio.run(FastGet.get(args.url, threads=args.threads, callback=CLICallback()))
+        asyncio.run(FastGet.get(args.url, threads=args.threads, callback=CLICallback(), temp_path=temp_path))
     except KeyboardInterrupt:
         print(f"{Color.from_name('yellow')}Interrupted{Color.from_name('reset')}")
         sys.exit(1)
     except Exception:
         sys.exit(1)
 
-    output_path.write_bytes(response.content)
-    print(f"{Color.from_name('bright_green')}Downloaded{Color.from_name('reset')} to {output_path} {Color.from_name('grey')}{human_size(len(response.content))}{Color.from_name('reset')}")
+    temp_path.replace(output_path)
+    print(f"{Color.from_name('bright_green')}Downloaded{Color.from_name('reset')} to {output_path} {Color.from_name('grey')}{human_size(output_path.stat().st_size)}{Color.from_name('reset')}")

@@ -1,32 +1,27 @@
+import os
 import json
 import httpx
 import asyncio
+import tempfile
+from typing import Optional, Union, Dict
+from pathlib import Path
 from importlib.metadata import version
 
 class Callback:
-    async def on_start(self, size: int, threads: int, http_version: int, url: str) -> None:
+    async def on_start(self, size: int, threads: int, http_version: int, url: str):
         pass
 
-    async def on_update(self, thread: int, downloaded: int) -> None:
+    async def on_update(self, thread: int, downloaded: int):
         pass
 
-    async def on_complete(self) -> None:
+    async def on_complete(self):
         pass
 
-    async def on_merge_start(self, size: int) -> None:
-        pass
-
-    async def on_merge_update(self, downloaded: int) -> None:
-        pass
-
-    async def on_merge_complete(self) -> None:
-        pass
-
-    async def on_error(self, message: str) -> None:
+    async def on_error(self, message: str):
         pass
 
 class Response:
-    def __init__(self, url: str, http_version: int, status_code: int, headers: dict[str, str], content: bytes):
+    def __init__(self, url: str, http_version: int, status_code: int, headers: Dict[str, str], content: Optional[bytes]):
         self.url = url
         self.http_version = http_version
         self.status_code = status_code
@@ -38,13 +33,24 @@ class Response:
         return self.content.decode()
 
     @property
-    def json(self) -> dict | list:
+    def json(self) -> Union[dict, list]:
         return json.loads(self.text)
 
 class FastGet:
     @staticmethod
-    async def get(url: str, threads: int = 8, headers: dict[str, str] = {}, callback: Callback = Callback()) -> Response:
-        headers = {"User-Agent": f"FastGet/{version('nercone-fastget')} (+https://github.com/nercone-dev/fastget/)"} | headers
+    async def get(url: str, threads: int = 8, headers: Dict[str, str] = {}, callback: Callback = Callback(), temp_path: Optional[Union[str, Path]] = None) -> Response:
+        headers_arg = headers
+        headers = {"User-Agent": f"FastGet/{version('nercone-fastget')} (+https://github.com/nercone-dev/fastget/)"}
+        headers.update(headers_arg)
+
+        owns_temp_file = temp_path is None
+        if owns_temp_file:
+            fd, path = tempfile.mkstemp(prefix="fastget-")
+            os.close(fd)
+            temp_path = Path(path)
+        else:
+            temp_path = Path(temp_path)
+
         try:
             limits = httpx.Limits(max_connections=threads + 2, max_keepalive_connections=threads + 2)
             async with httpx.AsyncClient(http2=True, limits=limits, follow_redirects=True) as client:
@@ -55,56 +61,55 @@ class FastGet:
 
                 if not supports_range or threads <= 1:
                     await callback.on_start(content_length, 1, http_version, url)
-                    data = bytearray()
-                    async with client.stream("GET", url, headers=headers) as stream:
-                        async for piece in stream.aiter_bytes():
-                            data += piece
-                            await callback.on_update(0, len(data))
+                    downloaded = 0
+                    with open(temp_path, "wb") as file:
+                        async with client.stream("GET", url, headers=headers) as stream:
+                            async for piece in stream.aiter_bytes():
+                                file.write(piece)
+                                downloaded += len(piece)
+                                await callback.on_update(0, downloaded)
                     await callback.on_complete()
                     return Response(
                         url=str(stream.url),
                         http_version=http_version,
                         status_code=stream.status_code,
                         headers=dict(stream.headers),
-                        content=bytes(data)
+                        content=temp_path.read_bytes() if owns_temp_file else None
                     )
 
                 await callback.on_start(content_length, threads, http_version, url)
 
                 chunk_size = content_length // threads
                 ranges = [(i, i * chunk_size, (i + 1) * chunk_size - 1 if i < threads - 1 else content_length - 1) for i in range(threads)]
-                chunks: list[bytes | None] = [None] * threads
 
-                async def download_chunk(index: int, start: int, end: int) -> None:
+                with open(temp_path, "wb") as file:
+                    file.truncate(content_length)
+
+                async def download_chunk(index: int, start: int, end: int):
                     chunk_headers = {**headers, "Range": f"bytes={start}-{end}"}
                     async with client.stream("GET", url, headers=chunk_headers) as stream:
-                        data = bytearray()
-                        async for piece in stream.aiter_bytes():
-                            data += piece
-                            await callback.on_update(index, len(data))
-                        chunks[index] = bytes(data)
+                        downloaded = 0
+                        with open(temp_path, "r+b") as file:
+                            file.seek(start)
+                            async for piece in stream.aiter_bytes():
+                                file.write(piece)
+                                downloaded += len(piece)
+                                await callback.on_update(index, downloaded)
 
                 await asyncio.gather(*[download_chunk(index, start, end) for index, start, end in ranges])
                 await callback.on_complete()
-
-                total = sum(len(c) for c in chunks)  # type: ignore[arg-type]
-                await callback.on_merge_start(total)
-
-                merged = bytearray()
-                for chunk in chunks:
-                    merged += chunk  # type: ignore[operator]
-                    await callback.on_merge_update(len(merged))
-
-                await callback.on_merge_complete()
 
                 return Response(
                     url=url,
                     http_version=http_version,
                     status_code=200,
                     headers=dict(head.headers),
-                    content=bytes(merged)
+                    content=temp_path.read_bytes() if owns_temp_file else None
                 )
 
         except Exception as e:
             await callback.on_error(str(e))
             raise
+        finally:
+            if owns_temp_file:
+                temp_path.unlink(missing_ok=True)
